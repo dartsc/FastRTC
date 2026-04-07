@@ -128,10 +128,10 @@ class j {
   }
 }
 class R {
-  constructor(e, t) {
+  constructor(e, t, s = null) {
     this.roomCode = e, this.isOfferer = t;
-    const s = Array.from("FRTC" + e).map((n) => n.charCodeAt(0).toString(16).padStart(2, "0")).join("");
-    this.infoHash = s.padEnd(40, "0"), this.peerId = Array.from(crypto.getRandomValues(new Uint8Array(20))).map((n) => n.toString(16).padStart(2, "0")).join(""), this.urls = [
+    const n = Array.from("FRTC" + e).map((i) => i.charCodeAt(0).toString(16).padStart(2, "0")).join("");
+    this.infoHash = n.padEnd(40, "0"), this.peerId = Array.from(crypto.getRandomValues(new Uint8Array(20))).map((i) => i.toString(16).padStart(2, "0")).join(""), this.urls = s && s.length > 0 ? [...s] : [
       "wss://tracker.openwebtorrent.com",
       "wss://tracker.webtorrent.dev",
       "wss://tracker.files.fm:7073/announce",
@@ -1137,6 +1137,7 @@ class ce {
    * @param {object} [opts.proxy] — proxy server options (allowList, blockList)
    * @param {boolean} [opts.isHost=false] — advertise this peer as a proxy/service host
    * @param {boolean} [opts.requireRoomCode=false] — use private 6-digit secure room codes instead of the public network
+   * @param {string[]} [opts.trackerUrls] — custom WebTorrent tracker URLs (overrides built-in public trackers)
    */
   constructor({
     iceServers: e = ae,
@@ -1144,9 +1145,10 @@ class ce {
     chunkSize: s = L,
     proxy: n = {},
     isHost: i = !1,
-    requireRoomCode: r = !1
+    requireRoomCode: r = !1,
+    trackerUrls: c = null
   } = {}) {
-    this.iceServers = e, this.dataChannelCount = t, this.chunkSize = s, this.isHost = i, this.requireRoomCode = r, this.remoteIsHost = !1, this.pc = null, this.signaling = null, this.pool = null, this.bonding = null, this.monitor = new B(), this.roomCode = null, this.isOfferer = !1, this._listeners = {}, this._pendingMeta = /* @__PURE__ */ new Map(), this._probeTimers = /* @__PURE__ */ new Map(), this._negotiationState = "idle", this._pcCreated = !1, this._proxyOpts = n, this.message = null, this._proxyClient = null, this._proxyServer = null, this.proxy = null, this.media = null, this.stream = null;
+    this.iceServers = e, this.dataChannelCount = t, this.chunkSize = s, this.isHost = i, this.requireRoomCode = r, this.trackerUrls = c, this.remoteIsHost = !1, this.pc = null, this.signaling = null, this.pool = null, this.bonding = null, this.monitor = new B(), this.roomCode = null, this.isOfferer = !1, this._listeners = {}, this._pendingMeta = /* @__PURE__ */ new Map(), this._probeTimers = /* @__PURE__ */ new Map(), this._negotiationState = "idle", this._pcCreated = !1, this._proxyOpts = n, this.message = null, this._proxyClient = null, this._proxyServer = null, this.proxy = null, this.media = null, this.stream = null;
   }
   // ── Event system ──
   getVersion() {
@@ -1170,7 +1172,7 @@ class ce {
   // ── Room management ──
   async createRoom(e = null) {
     return this.isOfferer = !0, e ? this.roomCode = e : this.requireRoomCode ? this.roomCode = Math.random().toString(36).substring(2, 8).toUpperCase() : this.roomCode = "FASTRTC-PUBLIC-SWARM", new Promise((t, s) => {
-      this.signaling = new R(this.roomCode, !0), this.signaling.onOpen = () => {
+      this.signaling = new R(this.roomCode, !0, this.trackerUrls), this.signaling.onOpen = () => {
         this._emit("wss-open", 0), this._emit("room-created", this.roomCode), t(this.roomCode);
       }, this.signaling.onMessage = (n) => {
         this._onSignalingMessage(n);
@@ -1188,7 +1190,7 @@ class ce {
       this.roomCode = "FASTRTC-PUBLIC-SWARM";
     }
     return new Promise((t, s) => {
-      this._joinResolver = t, this.signaling = new R(this.roomCode, !1), this.signaling.onOpen = () => {
+      this._joinResolver = t, this.signaling = new R(this.roomCode, !1, this.trackerUrls), this.signaling.onOpen = () => {
         this._emit("wss-open", 0);
       }, this.signaling.onMessage = (n) => {
         this._onSignalingMessage(n);
