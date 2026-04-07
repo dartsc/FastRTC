@@ -68,6 +68,21 @@ await secureRtc.joinRoom(roomCode);
 
 *(You can also explicitly pass a manual code: `rtc.createRoom('MY-CUSTOM-SWARM')`)*
 
+### Using Custom Tracker URLs
+
+By default, FastRTC connects through 20 built-in public WebTorrent trackers. If you want to use your own private trackers (or a specific subset), pass the `trackerUrls` option:
+
+```javascript
+const rtc = new FastRTC({
+  trackerUrls: [
+    'wss://my-private-tracker.example.com/announce',
+    'wss://another-tracker.example.com:8080'
+  ]
+});
+```
+
+When `trackerUrls` is provided, the built-in public trackers are **replaced entirely**. Both peers must use the same tracker URLs to find each other.
+
 ---
 
 ## 2. File Transfers
@@ -159,7 +174,7 @@ By deploying a simple Node.js script to a cheap VPS (using a library like `node-
 2. The Node.js Host calls `rtc.proxy.serve()`.
 3. Your browser connects to the swarm. The `connected` event fires with `info.remoteIsHost === true`.
 4. Your browser tunnels all `rtc.proxy.fetch()` traffic through the Node.js server.
-5. Because the exit node is running Node.js, **it FULLY bypasses CORS** and can fetch absolutely any domain or API on the open internet and stream the raw bytes back to your browser!
+5. Because the exit node is running Node.js, **it FULLY bypasses CORS** it also cannot at all be blocked by any browser, monitoring extensions, or networks (Unless They Block a certain part of this which i will not specify here so that doesnt EVER happen) and can fetch absolutely any domain or API on the open internet and stream the raw bytes back to your browser!
 
 ---
 
