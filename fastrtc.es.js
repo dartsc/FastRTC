@@ -262,8 +262,8 @@ class J {
     t.action === "announce" && t.peer_id && t.peer_id !== this.peerId && this.isOfferer && !this.remotePeerId && (this.remotePeerId = t.peer_id, this._stopAnnouncing(), this.onMessage && this.onMessage({ type: "peer-joined" }));
   }
 }
-const I = "https://oauth2.googleapis.com/token", M = "https://www.googleapis.com/auth/spreadsheets", V = "https://accounts.google.com/gsi/client";
-let P = !1, b = null;
+const I = "https://oauth2.googleapis.com/token", P = "https://www.googleapis.com/auth/spreadsheets", V = "https://accounts.google.com/gsi/client";
+let M = !1, b = null;
 class _ {
   /**
    * @param {string} roomCode — Room / swarm identifier
@@ -486,7 +486,7 @@ class _ {
   async _mintServiceAccountToken() {
     const e = Math.floor(Date.now() / 1e3), s = {
       iss: this._serviceAccount.client_email,
-      scope: M,
+      scope: P,
       aud: I,
       iat: e,
       exp: e + 3600
@@ -511,7 +511,7 @@ class _ {
   async _requestClientToken() {
     return await _._loadGisScript(), this._gisTokenClient || (this._gisTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: this._clientId,
-      scope: M,
+      scope: P,
       callback: (e) => {
         if (e.error) {
           console.error("[DriveSignal] GIS token error:", e.error), this._gisResolve && this._gisResolve();
@@ -527,10 +527,10 @@ class _ {
    * Load the Google Identity Services script (once, shared across instances).
    */
   static _loadGisScript() {
-    return P && typeof google < "u" && google.accounts ? Promise.resolve() : b || (b = new Promise((e, s) => {
+    return M && typeof google < "u" && google.accounts ? Promise.resolve() : b || (b = new Promise((e, s) => {
       const t = document.createElement("script");
       t.src = V, t.async = !0, t.onload = () => {
-        P = !0, e();
+        M = !0, e();
       }, t.onerror = () => s(new Error("[DriveSignal] Failed to load Google Identity Services script")), document.head.appendChild(t);
     }), b);
   }
@@ -1020,7 +1020,7 @@ class z {
     return t.buffer;
   }
 }
-const C = 13, H = 64 * 1024, w = {
+const C = 13, F = 64 * 1024, w = {
   DATA: 1,
   ACK: 2,
   FIN: 4,
@@ -1041,7 +1041,7 @@ function Y(a) {
     payload: a.byteLength > C ? new Uint8Array(a, C) : null
   };
 }
-function U(a, e, s = H) {
+function U(a, e, s = F) {
   const t = new Uint8Array(a), n = Math.ceil(t.byteLength / s), i = [];
   for (let r = 0; r < n; r++) {
     const h = r * s, o = Math.min(h + s, t.byteLength), c = t.slice(h, o);
@@ -1168,7 +1168,7 @@ function R(a, e) {
   const s = k.encode(e), t = new ArrayBuffer(5 + s.length), n = new DataView(t);
   return new Uint8Array(t).set(s, 5), n.setUint8(0, f.ERROR), n.setUint32(1, a, !0), t;
 }
-function W(a) {
+function H(a) {
   const e = new DataView(a), s = new Uint8Array(a), t = e.getUint8(0), n = e.getUint32(1, !0);
   switch (t) {
     case f.REQUEST: {
@@ -1251,7 +1251,7 @@ class ce {
    * @param {ArrayBuffer} buffer
    */
   handleIncoming(e) {
-    const s = W(e), t = this._pending.get(s.requestId);
+    const s = H(e), t = this._pending.get(s.requestId);
     if (t)
       switch (s.type) {
         case f.RESPONSE:
@@ -1320,7 +1320,7 @@ class de {
    * @param {ArrayBuffer} buffer
    */
   async handleIncoming(e) {
-    const s = W(e);
+    const s = H(e);
     if (s.type !== f.REQUEST) return;
     if (!this._active) {
       await this._send(R(s.requestId, "Proxy server not active"));
@@ -1341,12 +1341,12 @@ class de {
         const u = c.body.getReader();
         let p = [];
         for (; ; ) {
-          const { done: d, value: q } = await u.read();
+          const { done: d, value: G } = await u.read();
           if (d) break;
-          const x = q;
+          const x = G;
           for (let S = 0; S < x.length; S += L) {
-            const G = x.slice(S, S + L);
-            p.push(this._send(oe(t, G))), p.length >= 4 && (await Promise.all(p), p = []);
+            const q = x.slice(S, S + L);
+            p.push(this._send(oe(t, q))), p.length >= 4 && (await Promise.all(p), p = []);
           }
         }
         p.length > 0 && await Promise.all(p);
@@ -1463,7 +1463,7 @@ class ue {
     this._renegotiate();
   }
 }
-const B = 1, F = 2, j = 3, T = new TextEncoder(), A = new TextDecoder();
+const B = 1, W = 2, j = 3, T = new TextEncoder(), A = new TextDecoder();
 class _e {
   /**
    * @param {function} sendFn — async (data: ArrayBuffer) => void
@@ -1517,7 +1517,7 @@ class _e {
       this._streams.set(i, r), this._emit("incoming", r);
       return;
     }
-    if (t === F) {
+    if (t === W) {
       const n = s[1], i = A.decode(s.slice(2, 2 + n)), r = e.slice(2 + n), h = this._streams.get(i);
       h && h._handleData(r);
       return;
@@ -1553,7 +1553,7 @@ class D {
   async write(e) {
     if (this._closed) throw new Error("Stream closed");
     const s = new Uint8Array(e), t = T.encode(this.name), n = new ArrayBuffer(2 + t.length + s.length), i = new Uint8Array(n);
-    i[0] = F, i[1] = t.length, i.set(t, 2), i.set(s, 2 + t.length), await this._send(n);
+    i[0] = W, i[1] = t.length, i.set(t, 2), i.set(s, 2 + t.length), await this._send(n);
   }
   /**
    * Close the stream.
@@ -1573,7 +1573,7 @@ class D {
     this._closed = !0, this._emit("close");
   }
 }
-const m = {
+const g = {
   CHUNK: 240,
   // File transfer / bonding chunks (ChunkProtocol)
   MESSAGE: 241,
@@ -1611,7 +1611,7 @@ const m = {
   }
 ];
 let N = 1;
-function g(a, e) {
+function m(a, e) {
   const s = new Uint8Array(e), t = new ArrayBuffer(1 + s.length), n = new Uint8Array(t);
   return n[0] = a, n.set(s, 1), t;
 }
@@ -1635,7 +1635,7 @@ class pe {
   constructor({
     iceServers: e = fe,
     dataChannels: s = 32,
-    chunkSize: t = H,
+    chunkSize: t = F,
     proxy: n = {},
     isHost: i = !1,
     requireRoomCode: r = !1,
@@ -1697,19 +1697,19 @@ class pe {
   // ── Data transfer (file) ──
   async send(e) {
     if (!this.bonding) throw new Error("Not connected");
-    const s = N++, n = U(e, s, this.chunkSize).map((i) => g(m.CHUNK, i));
+    const s = N++, n = U(e, s, this.chunkSize).map((i) => m(g.CHUNK, i));
     await this.bonding.sendChunks(n);
   }
   async sendFile(e) {
     if (!this.bonding) throw new Error("Not connected");
-    const s = N++, t = await e.arrayBuffer(), n = { name: e.name, size: e.size, type: e.type }, i = g(m.CHUNK, Q(s, n));
+    const s = N++, t = await e.arrayBuffer(), n = { name: e.name, size: e.size, type: e.type }, i = m(g.CHUNK, Q(s, n));
     for (const o of this.bonding.senders)
       try {
         await o(i);
       } catch {
       }
     await new Promise((o) => setTimeout(o, 50));
-    const r = U(t, s, this.chunkSize), h = r.map((o) => g(m.CHUNK, o));
+    const r = U(t, s, this.chunkSize), h = r.map((o) => m(g.CHUNK, o));
     this._emit("send-start", { transferId: s, name: e.name, totalChunks: r.length }), await this.bonding.sendChunks(h), this._emit("send-complete", { transferId: s, name: e.name });
   }
   getStats() {
@@ -1765,7 +1765,7 @@ class pe {
       iceServers: this.iceServers,
       iceCandidatePoolSize: 10
     }), this.pc.onicecandidate = (e) => {
-      e.candidate && this._isSignalingReady() && this.signaling.send({
+      this.driveSignalConfig || e.candidate && this._isSignalingReady() && this.signaling.send({
         type: "ice-candidate",
         candidate: e.candidate,
         roomCode: this.roomCode
@@ -1789,7 +1789,7 @@ class pe {
   }
   async _startOffer() {
     const e = await this.pc.createOffer();
-    await this.pc.setLocalDescription(e), this.signaling.send({
+    await this.pc.setLocalDescription(e), this.driveSignalConfig && await this._waitForIceGathering(), this.signaling.send({
       type: "offer",
       sdp: this.pc.localDescription,
       roomCode: this.roomCode,
@@ -1799,7 +1799,7 @@ class pe {
   async _handleOffer(e) {
     await this.pc.setRemoteDescription(new RTCSessionDescription(e));
     const s = await this.pc.createAnswer();
-    await this.pc.setLocalDescription(s), this.signaling.send({
+    await this.pc.setLocalDescription(s), this.driveSignalConfig && await this._waitForIceGathering(), this.signaling.send({
       type: "answer",
       sdp: this.pc.localDescription,
       roomCode: this.roomCode,
@@ -1808,6 +1808,18 @@ class pe {
   }
   async _handleAnswer(e) {
     await this.pc.setRemoteDescription(new RTCSessionDescription(e));
+  }
+  /**
+   * Wait for ICE gathering to complete so all candidates are embedded in the SDP.
+   * Used when signaling is slow (e.g. DriveSignal polling) to avoid trickle ICE.
+   */
+  _waitForIceGathering() {
+    return !this.pc || this.pc.iceGatheringState === "complete" ? Promise.resolve() : new Promise((e) => {
+      const s = this.pc.onicegatheringstatechange;
+      this.pc.onicegatheringstatechange = (t) => {
+        s && s.call(this.pc, t), this.pc.iceGatheringState === "complete" && e();
+      }, setTimeout(e, 1e4);
+    });
   }
   async _handleIceCandidate(e) {
     if (this.pc && e)
@@ -1836,13 +1848,13 @@ class pe {
     const e = async (t) => {
       this.bonding && this.bonding.senders.length > 0 && await this.bonding.sendSingle(t);
     }, s = this.serverMode ? async (t) => {
-      const n = g(m.PROXY, t);
+      const n = m(g.PROXY, t);
       this.pool.sendImmediate(n) === -1 && await this.pool.send(n);
     } : async (t) => {
-      await e(g(m.PROXY, t));
+      await e(m(g.PROXY, t));
     };
     this.message = new ne(async (t) => {
-      await e(g(m.MESSAGE, t));
+      await e(m(g.MESSAGE, t));
     }), this._proxyClient = new ce(s), this._proxyServer = new de(s, this._proxyOpts), this.proxy = {
       /** Fetch a URL through the P2P tunnel. */
       fetch: (t, n) => this._proxyClient.fetch(t, n),
@@ -1853,7 +1865,7 @@ class pe {
       /** Stop serving proxy requests. */
       stop: () => this._proxyServer.stop()
     }, this.stream = new _e(async (t) => {
-      await e(g(m.STREAM, t));
+      await e(m(g.STREAM, t));
     });
   }
   _updateBondingPaths() {
@@ -1884,16 +1896,16 @@ class pe {
     if (t.length < 1) return;
     const n = t[0], i = e.slice(1);
     switch (n) {
-      case m.CHUNK:
+      case g.CHUNK:
         this._handleChunkData(i, s);
         break;
-      case m.MESSAGE:
+      case g.MESSAGE:
         this.message && this.message.handleIncoming(i);
         break;
-      case m.PROXY:
+      case g.PROXY:
         this._handleProxyData(i);
         break;
-      case m.STREAM:
+      case g.STREAM:
         this.stream && this.stream.handleIncoming(i);
         break;
       default:
@@ -1926,7 +1938,7 @@ class pe {
       const n = setInterval(async () => {
         const i = Z(performance.now());
         try {
-          await this.pool.sendOnChannel(s, g(m.CHUNK, i)), this.monitor.recordProbeSent(t);
+          await this.pool.sendOnChannel(s, m(g.CHUNK, i)), this.monitor.recordProbeSent(t);
         } catch {
         }
       }, e);
@@ -1943,7 +1955,7 @@ class pe {
 export {
   z as BondingEngine,
   $ as ConnectionMonitor,
-  H as DEFAULT_CHUNK_SIZE,
+  F as DEFAULT_CHUNK_SIZE,
   K as DataChannelPool,
   _ as DriveSignal,
   pe as FastRTC,
@@ -1959,7 +1971,7 @@ export {
   Y as decodeChunk,
   X as decodeMetaPayload,
   ee as decodeProbeTimestamp,
-  W as decodeProxyFrame,
+  H as decodeProxyFrame,
   E as encodeChunk,
   Q as encodeMetaChunk,
   Z as encodeProbe,
