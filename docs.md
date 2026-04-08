@@ -1,4 +1,4 @@
-# SpeedRTC v2.5 � The Serverless P2P Suite
+# SpeedRTC v2.5 The Serverless P2P Suite
 
 SpeedRTC is a comprehensive **P2P Communication Suite** built on WebRTC data channel bonding. It is fully serverless, using public WebTorrent trackers for peer matchmaking.
 
