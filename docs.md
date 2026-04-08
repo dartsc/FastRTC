@@ -483,7 +483,6 @@ signal.onMessage = (msg) => console.log('Received:', msg);
 await signal.connect();
 signal.send({ type: 'offer', sdp: localDescription });
 
-// Clean up message rows when done
 await signal.cleanup();
 signal.close();
 ```
