@@ -1613,6 +1613,10 @@ class xt {
   }
   async send(e) {
     if (!this.connected) throw new Error("WebTransportTransport: not connected");
+    if (this._relay) {
+      await this._relay.send(e);
+      return;
+    }
     const t = e instanceof ArrayBuffer ? new Uint8Array(e) : new Uint8Array(e);
     if (this.reliable && this._writer) {
       const s = new Uint8Array(4 + t.length);
