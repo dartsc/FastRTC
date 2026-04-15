@@ -109,8 +109,45 @@ class Ft {
     });
   }
 }
-const Xe = 0.3, Bt = 2e4, Nt = 8e3, Wt = 5e3, Ht = 4, $t = 1;
-class jt {
+class Bt {
+  static async probe(e, { timeout: t = 1500, topN: s = 0 } = {}) {
+    if (!(e != null && e.length) || e.length <= 1) return e;
+    const n = /* @__PURE__ */ new Map();
+    for (const l of e) {
+      const d = Array.isArray(l.urls) ? l.urls : [l.urls];
+      for (const f of d) n.set(f, l);
+    }
+    const i = /* @__PURE__ */ new Set(), r = [];
+    let o;
+    try {
+      o = new RTCPeerConnection({ iceServers: e, iceCandidatePoolSize: 0 }), o.createDataChannel("iceprobe");
+      const l = new Promise((f) => {
+        const u = setTimeout(f, t);
+        o.onicecandidate = ({ candidate: _ }) => {
+          if (!_) {
+            clearTimeout(u), f();
+            return;
+          }
+          const p = _.url ? n.get(_.url) : null;
+          p && !i.has(p) && (i.add(p), r.push(p));
+        }, o.onicecandidateerror = () => {
+        };
+      }), d = await o.createOffer();
+      await o.setLocalDescription(d), await l;
+    } catch {
+      return e;
+    } finally {
+      try {
+        o == null || o.close();
+      } catch {
+      }
+    }
+    const a = e.filter((l) => !i.has(l)), h = [...r, ...a];
+    return s > 0 ? h.slice(0, s) : h;
+  }
+}
+const Xe = 0.3, Nt = 2e4, Wt = 8e3, Ht = 5e3, $t = 4, jt = 1;
+class Kt {
   constructor(e) {
     this.url = e, this.ws = null, this.connected = !1, this.latency = 0, this.load = 0, this.score = 1, this._lastSentAt = 0, this._awaitingResponse = !1, this._onMessage = null;
   }
@@ -123,7 +160,7 @@ class jt {
         } catch {
         }
         t(new Error(`timeout: ${this.url}`));
-      }, Wt);
+      }, Ht);
       try {
         this.ws = new WebSocket(this.url), this.ws.onopen = () => {
           clearTimeout(s), this.connected = !0, e(this);
@@ -184,7 +221,7 @@ class jt {
 }
 class yt {
   constructor(e) {
-    this.nodes = e.map((t) => new jt(t)), this._active = [], this._primary = null, this._pingTimer = null, this._rebalanceTimer = null, this._closed = !1, this.onMessage = null, this.onRebalance = null, this.onNodeJoined = null;
+    this.nodes = e.map((t) => new Kt(t)), this._active = [], this._primary = null, this._pingTimer = null, this._rebalanceTimer = null, this._closed = !1, this.onMessage = null, this.onRebalance = null, this.onNodeJoined = null;
   }
   get connected() {
     return this._active.some((e) => e.connected);
@@ -196,7 +233,7 @@ class yt {
     return new Promise((e, t) => {
       let s = 0, n = !1;
       const i = this.nodes.length, r = () => {
-        if (!n && this._active.length >= $t) {
+        if (!n && this._active.length >= jt) {
           n = !0, this._primary = this._best(), this._startTimers(), e(this._active.length);
           return;
         }
@@ -208,7 +245,7 @@ class yt {
             a.close(), r();
             return;
           }
-          this._active.length < Ht ? (this._active.push(a), n && (this._rebalance(), this.onNodeJoined && this.onNodeJoined(a.url))) : a.close(), r();
+          this._active.length < $t ? (this._active.push(a), n && (this._rebalance(), this.onNodeJoined && this.onNodeJoined(a.url))) : a.close(), r();
         }).catch(() => {
           s++, r();
         });
@@ -252,9 +289,9 @@ class yt {
     this._pingTimer = setInterval(() => {
       for (const e of this._active)
         e.connected && !e._awaitingResponse && (e._lastSentAt = performance.now(), e._awaitingResponse = !0);
-    }, Nt), this._rebalanceTimer = setInterval(() => {
+    }, Wt), this._rebalanceTimer = setInterval(() => {
       this._rebalance();
-    }, Bt);
+    }, Nt);
   }
   _stopTimers() {
     clearInterval(this._pingTimer), clearInterval(this._rebalanceTimer), this._pingTimer = null, this._rebalanceTimer = null;
@@ -375,13 +412,13 @@ class fe {
   }
 }
 re(fe, "DEFAULT_TRACKER_URLS", Qe);
-const ye = "https://oauth2.googleapis.com/token", Ye = "https://www.googleapis.com/auth/spreadsheets", Kt = "https://accounts.google.com/gsi/client";
+const ye = "https://oauth2.googleapis.com/token", Ye = "https://www.googleapis.com/auth/spreadsheets", Vt = "https://accounts.google.com/gsi/client";
 let Ze = !1, oe = null;
 const we = /* @__PURE__ */ new Map();
 function et(c) {
   return c ? c.refreshToken ? `refresh:${c.clientId}:${c.refreshToken.slice(-12)}` : c.serviceAccount ? `service:${c.serviceAccount.client_email}` : c.accessToken ? `static:${c.accessToken.slice(-12)}` : null : null;
 }
-class y {
+class w {
   constructor(e, t, s = {}) {
     if (this.roomCode = e, this.isOfferer = t, this._driveConfig = s, this.spreadsheetId = s.spreadsheetId, this.pollInterval = s.pollInterval || 500, this.sheetName = s.sheetName || e, !this.spreadsheetId)
       throw new Error("DriveSignal requires a spreadsheetId");
@@ -404,7 +441,7 @@ class y {
       throw new Error(
         "DriveSignal requires one of: raw ({ token }), clientId (client-only), accessToken, refreshToken (+ clientId/clientSecret), serviceAccount, or apiKey"
       );
-    this.peerId = y._generatePeerId(), this.remotePeerId = null, this.onMessage = null, this.onOpen = null, this.onClose = null, this.connected = !1, this._pollTimer = null, this._myColumn = null, this._remoteColIndex = null, this._readCursor = 1, this._destroyed = !1, this._baseUrl = "https://sheets.googleapis.com/v4/spreadsheets";
+    this.peerId = w._generatePeerId(), this.remotePeerId = null, this.onMessage = null, this.onOpen = null, this.onClose = null, this.connected = !1, this._pollTimer = null, this._myColumn = null, this._remoteColIndex = null, this._readCursor = 1, this._destroyed = !1, this._baseUrl = "https://sheets.googleapis.com/v4/spreadsheets";
   }
   _qSheet() {
     return "'" + this.sheetName.replace(/'/g, "''") + "'";
@@ -422,7 +459,7 @@ class y {
     const s = we.get(t);
     if (!(s && Date.now() < s.expiry - 5e3))
       try {
-        await new y("__warmup__", !1, e)._ensureToken();
+        await new w("__warmup__", !1, e)._ensureToken();
       } catch {
       }
   }
@@ -430,7 +467,7 @@ class y {
     try {
       if (this._authMode === "raw") {
         if (await this._registerColumn(), this._lastRawValues && this._myColumn) {
-          const e = y._colIndex(this._myColumn);
+          const e = w._colIndex(this._myColumn);
           let t = 0;
           for (let s = 0; s < this._lastRawValues.length; s++)
             this._lastRawValues[s] && this._lastRawValues[s][e] && (t = s + 1);
@@ -484,20 +521,20 @@ class y {
     }
     const t = e.indexOf(this.peerId);
     if (t >= 0) {
-      this._myColumn = y._colLetter(t);
+      this._myColumn = w._colLetter(t);
       return;
     }
     const s = e.length;
-    this._myColumn = y._colLetter(s), await this._writeCell(`${this._qSheet()}!${this._myColumn}1`, this.peerId);
+    this._myColumn = w._colLetter(s), await this._writeCell(`${this._qSheet()}!${this._myColumn}1`, this.peerId);
   }
   async _registerColumn() {
     const e = await this._readHeaders(), t = e.indexOf(this.peerId);
     if (t >= 0) {
-      this._myColumn = y._colLetter(t);
+      this._myColumn = w._colLetter(t);
       return;
     }
     const s = e.length;
-    this._myColumn = y._colLetter(s), await this._writeCell(`${this._qSheet()}!${this._myColumn}1`, this.peerId);
+    this._myColumn = w._colLetter(s), await this._writeCell(`${this._qSheet()}!${this._myColumn}1`, this.peerId);
   }
   _startPolling() {
     this._poll(), this._pollTimer = setInterval(() => this._poll(), this.pollInterval);
@@ -530,7 +567,7 @@ class y {
           }
         }
         if (this._authMode === "raw" && this._myColumn) {
-          const s = y._colIndex(this._myColumn);
+          const s = w._colIndex(this._myColumn);
           let n = 0;
           for (let i = 0; i < e.length; i++)
             e[i] && e[i][s] && (n = i + 1);
@@ -588,7 +625,7 @@ class y {
       aud: ye,
       iat: e,
       exp: e + 3600
-    }, s = await y._signJwt(t, this._serviceAccount.private_key, this), n = new URLSearchParams({
+    }, s = await w._signJwt(t, this._serviceAccount.private_key, this), n = new URLSearchParams({
       grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
       assertion: s
     }), i = await fetch(ye, {
@@ -602,7 +639,7 @@ class y {
     this._accessToken = r.access_token, this._tokenExpiry = Date.now() + (r.expires_in ? r.expires_in * 1e3 - 3e5 : 3300 * 1e3);
   }
   async _requestClientToken() {
-    return await y._loadGisScript(), this._gisTokenClient || (this._gisTokenClient = google.accounts.oauth2.initTokenClient({
+    return await w._loadGisScript(), this._gisTokenClient || (this._gisTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: this._clientId,
       scope: Ye,
       callback: (e) => {
@@ -619,7 +656,7 @@ class y {
   static _loadGisScript() {
     return Ze && typeof google < "u" && google.accounts ? Promise.resolve() : oe || (oe = new Promise((e, t) => {
       const s = document.createElement("script");
-      s.src = Kt, s.async = !0, s.onload = () => {
+      s.src = Vt, s.async = !0, s.onload = () => {
         Ze = !0, e();
       }, s.onerror = () => t(new Error("[DriveSignal] Failed to load Google Identity Services script")), document.head.appendChild(s);
     }), oe);
@@ -640,7 +677,7 @@ class y {
   }
   async _writeCell(e, t) {
     if (this._authMode === "raw") {
-      const { row: s, col: n } = y._parseRange(e);
+      const { row: s, col: n } = w._parseRange(e);
       return this._rawWriteCell(s, n, t);
     }
     await this._sheetsRequest(
@@ -651,7 +688,7 @@ class y {
   }
   async _appendToColumn(e, t) {
     if (this._authMode === "raw") {
-      const i = y._colIndex(e), r = this._myWriteRow;
+      const i = w._colIndex(e), r = this._myWriteRow;
       return this._myWriteRow++, this._rawWriteCell(r, i, t);
     }
     const s = this._myWriteRow;
@@ -707,7 +744,7 @@ class y {
         delete window[t], e([]);
       }, 8e3);
       window[t] = (i) => {
-        clearTimeout(s), delete window[t], e(y._parseGvizTable(i));
+        clearTimeout(s), delete window[t], e(w._parseGvizTable(i));
       };
       const n = document.createElement("script");
       n.src = `https://docs.google.com/spreadsheets/d/${this.spreadsheetId}/gviz/tq?tqx=responseHandler:${t}&gid=${this._rawGid}&headers=0&tq=${encodeURIComponent("SELECT *")}`, n.onerror = () => {
@@ -727,7 +764,7 @@ class y {
   static _parseRange(e) {
     const s = (e.includes("!") ? e.split("!")[1] : e).match(/^([A-Z]+)(\d+)$/);
     return s ? {
-      col: y._colIndex(s[1]),
+      col: w._colIndex(s[1]),
       row: parseInt(s[2], 10) - 1
     } : { row: 0, col: 0 };
   }
@@ -742,16 +779,16 @@ class y {
     return t;
   }
   static async _signJwt(e, t, s) {
-    s._signingKey || (s._signingKey = await y._importPem(t));
+    s._signingKey || (s._signingKey = await w._importPem(t));
     const n = { alg: "RS256", typ: "JWT" }, i = [
-      y._b64url(JSON.stringify(n)),
-      y._b64url(JSON.stringify(e))
+      w._b64url(JSON.stringify(n)),
+      w._b64url(JSON.stringify(e))
     ], r = new TextEncoder().encode(i.join(".")), o = await crypto.subtle.sign(
       { name: "RSASSA-PKCS1-v1_5" },
       s._signingKey,
       r
     );
-    return i.push(y._b64urlBuf(o)), i.join(".");
+    return i.push(w._b64urlBuf(o)), i.join(".");
   }
   static async _importPem(e) {
     const t = e.replace(/-----BEGIN (?:RSA )?PRIVATE KEY-----/, "").replace(/-----END (?:RSA )?PRIVATE KEY-----/, "").replace(/\s/g, ""), s = atob(t), n = new Uint8Array(s.length);
@@ -1062,10 +1099,10 @@ function bt(c, e, t, s, n = {}) {
     o,
     s >> 8 & 255,
     s & 255
-  ]), u = new Uint8Array([...a, ...h, ...l]), _ = f.length + d.length + u.length, p = B(_), w = new Uint8Array(1 + p.length + _);
-  w[0] = T.CONNECT << 4, w.set(p, 1);
-  let g = 1 + p.length;
-  return w.set(f, g), g += f.length, w.set(d, g), g += d.length, w.set(u, g), w;
+  ]), u = new Uint8Array([...a, ...h, ...l]), _ = f.length + d.length + u.length, p = B(_), b = new Uint8Array(1 + p.length + _);
+  b[0] = T.CONNECT << 4, b.set(p, 1);
+  let y = 1 + p.length;
+  return b.set(f, y), y += f.length, b.set(d, y), y += d.length, b.set(u, y), b;
 }
 function Oe(c, e, t, s, n = {}) {
   const i = P(c), r = typeof e == "string" ? new TextEncoder().encode(e) : new Uint8Array(e), o = $e(n), a = t > 0, l = i.length + (a ? 2 : 0) + o.length + r.length, d = B(l), f = new Uint8Array(1 + d.length + l);
@@ -1107,7 +1144,7 @@ function It(c, e, t, s) {
   const l = e.slice(i, t + s);
   return { topic: o, payload: l, qos: n, packetId: a, props: h.props };
 }
-class Vt {
+class Gt {
   constructor(e, t, s = {}) {
     this.roomCode = e, this.isOfferer = t, this.brokerUrl = s.brokerUrl, this.username = s.username || null, this.password = s.password || null, this.qos = s.qos ?? 1, this.keepalive = s.keepalive ?? 30, this.topicPrefix = s.topicPrefix || "qdp", this.protocolVersion = s.protocolVersion || 4, this.sharedGroup = s.sharedGroup || null, this.peerId = s.clientId || "qdp-" + Array.from(crypto.getRandomValues(new Uint8Array(8))).map((n) => n.toString(16).padStart(2, "0")).join(""), this.remotePeerId = null, this.connected = !1, this.onMessage = null, this.onOpen = null, this.onClose = null, this._ws = null, this._packetId = 0, this._pingInterval = null, this._announceInterval = null, this._localOfferPayload = null, this._closed = !1, this._recvBuf = new Uint8Array(0);
   }
@@ -1235,7 +1272,7 @@ class Vt {
     e === `${n}/announce` ? this.remotePeerId || (this.isOfferer && !s.isOfferer ? (this.remotePeerId = s.from, this._stopAnnouncing(), this.onMessage && this.onMessage({ type: "peer-joined" })) : !this.isOfferer && s.isOfferer && (this.remotePeerId = s.from, this._stopAnnouncing())) : e === `${n}/offer` ? !this.isOfferer && s.data && (this.remotePeerId || (this.remotePeerId = s.from, this._stopAnnouncing()), s.from === this.remotePeerId && this.onMessage && this.onMessage(s.data)) : e === `${n}/msg/${this.peerId}` && s.data && this.onMessage && (this.remotePeerId || (this.remotePeerId = s.from), this.onMessage(s.data));
   }
 }
-class M {
+class L {
   constructor(e = {}) {
     var t;
     this.url = typeof e.server == "string" ? e.server : (t = e.server) == null ? void 0 : t.url, this.roomCode = e.roomCode || null, this.localPeerId = e.localPeerId || null, this.remotePeerId = e.remotePeerId || null, this.transportType = e.transportType || "generic", this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._ws = null, this._closed = !1;
@@ -1276,11 +1313,11 @@ class M {
     };
   }
 }
-const Gt = 128 * 1024;
+const Jt = 128 * 1024;
 class vt {
   constructor(e = {}) {
     re(this, "_fragAssembly", /* @__PURE__ */ new Map());
-    this.brokerUrl = e.brokerUrl, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this.username = e.username || null, this.password = e.password || null, this.qos = e.qos ?? 1, this.keepalive = e.keepalive ?? 30, this.topicPrefix = e.topicPrefix || "qdp", this.maxPayload = e.maxPayload || Gt, this.protocolVersion = e.protocolVersion || 4, this._topicAlias = e.topicAlias || !1, this._messageExpiry = e.messageExpiry || 0, this._e2e = e.e2e || null, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._ws = null, this._packetId = 0, this._pingInterval = null, this._closed = !1, this._recvBuf = new Uint8Array(0), this._sendQueue = [], this._clientId = "qdp-t-" + Array.from(crypto.getRandomValues(new Uint8Array(6))).map((t) => t.toString(16).padStart(2, "0")).join(""), this._outboundAliasSet = !1, this._inboundAliases = /* @__PURE__ */ new Map(), this._serverTopicAliasMax = 0;
+    this.brokerUrl = e.brokerUrl, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this.username = e.username || null, this.password = e.password || null, this.qos = e.qos ?? 1, this.keepalive = e.keepalive ?? 30, this.topicPrefix = e.topicPrefix || "qdp", this.maxPayload = e.maxPayload || Jt, this.protocolVersion = e.protocolVersion || 4, this._topicAlias = e.topicAlias || !1, this._messageExpiry = e.messageExpiry || 0, this._e2e = e.e2e || null, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._ws = null, this._packetId = 0, this._pingInterval = null, this._closed = !1, this._recvBuf = new Uint8Array(0), this._sendQueue = [], this._clientId = "qdp-t-" + Array.from(crypto.getRandomValues(new Uint8Array(6))).map((t) => t.toString(16).padStart(2, "0")).join(""), this._outboundAliasSet = !1, this._inboundAliases = /* @__PURE__ */ new Map(), this._serverTopicAliasMax = 0;
   }
   get _sendTopic() {
     return `${this.topicPrefix}/${this.roomCode}/data/${this.remotePeerId}`;
@@ -1446,7 +1483,7 @@ class vt {
     this._pingInterval && (clearInterval(this._pingInterval), this._pingInterval = null);
   }
   _connectServer() {
-    this._closed = !1, this._relay = new M({
+    this._closed = !1, this._relay = new L({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -1466,7 +1503,7 @@ class vt {
     });
   }
 }
-class Jt {
+class zt {
   constructor(e = []) {
     var t;
     this._backends = e, this._winner = null, this._settled = !1, this._signalingDone = !1, this.onMessage = null, this.onOpen = null, this.onClose = null, this.connected = !1, this.remotePeerId = null, this.peerId = ((t = e[0]) == null ? void 0 : t.peerId) || null, this._stats = e.map((s, n) => ({
@@ -1596,7 +1633,7 @@ class st {
     return await crypto.subtle.decrypt({ name: "AES-GCM", iv: s }, this._sharedKey, n);
   }
 }
-class zt {
+class Xt {
   constructor(e = {}) {
     this.url = e.url, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this.reliable = e.reliable ?? !1, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._transport = null, this._writer = null, this._datagramWriter = null, this._closed = !1, this._stream = null;
   }
@@ -1696,7 +1733,7 @@ class zt {
     }
   }
   async _connectServer() {
-    this._closed = !1, this._relay = new M({
+    this._closed = !1, this._relay = new L({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -1714,7 +1751,7 @@ class zt {
     }), await this._relay.connect();
   }
 }
-class Xt {
+class Qt {
   constructor(e, t, s = []) {
     this.roomCode = e, this.isOfferer = t, this.dhtNodes = s, this.peerId = "qdp-dht-" + Array.from(crypto.getRandomValues(new Uint8Array(8))).map((n) => n.toString(16).padStart(2, "0")).join(""), this.remotePeerId = null, this.connected = !1, this.onMessage = null, this.onOpen = null, this.onClose = null, this._sockets = [], this._closed = !1, this._lookupInterval = null, this._keyHash = null, this._localPayload = null;
   }
@@ -1822,7 +1859,7 @@ class Xt {
     return Array.from(new Uint8Array(s)).map((n) => n.toString(16).padStart(2, "0")).join("");
   }
 }
-class Qt {
+class Yt {
   constructor(e = {}) {
     this._brokerUrls = e.brokerUrls || [], this._roomCode = e.roomCode, this._localPeerId = e.localPeerId, this._remotePeerId = e.remotePeerId, this._username = e.username || null, this._password = e.password || null, this._qos = e.qos ?? 1, this._keepalive = e.keepalive ?? 30, this._topicPrefix = e.topicPrefix || "qdp", this._maxPayload = e.maxPayload, this._protocolVersion = e.protocolVersion, this._topicAlias = e.topicAlias, this._messageExpiry = e.messageExpiry, this._e2e = e.e2e, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this.onBrokerChange = e.onBrokerChange || null, this._transports = [], this._activeBrokerIndex = -1, this._closed = !1, this._receivedSet = /* @__PURE__ */ new Set(), this._dupCleanupTimer = null;
   }
@@ -1908,13 +1945,13 @@ class Qt {
     return s + ":" + t.length;
   }
 }
-const D = {
+const q = {
   RELAY: "relay",
   NATIVE_BRIDGE: "native-bridge",
   WASI: "wasi",
   PSEUDO_PING: "pseudo-ping"
-}, ue = 8, Pt = 8, Yt = 0, nt = 1400;
-function Zt(c) {
+}, ue = 8, Pt = 8, Zt = 0, nt = 1400;
+function es(c) {
   let e = 0;
   for (let t = 0; t < c.length - 1; t += 2)
     e += c[t] << 8 | c[t + 1];
@@ -1924,34 +1961,34 @@ function Zt(c) {
 function be(c, e, t) {
   const s = new Uint8Array(ue + t.length);
   s[0] = Pt, s[1] = 0, s[2] = 0, s[3] = 0, s[4] = c >> 8 & 255, s[5] = c & 255, s[6] = e >> 8 & 255, s[7] = e & 255, s.set(t, ue);
-  const n = Zt(s);
+  const n = es(s);
   return s[2] = n >> 8 & 255, s[3] = n & 255, s;
 }
-function es(c) {
+function ts(c) {
   if (c.length < ue) return null;
   const e = c[0];
-  if (e !== Yt && e !== Pt) return null;
+  if (e !== Zt && e !== Pt) return null;
   const t = c[4] << 8 | c[5], s = c[6] << 8 | c[7], n = c.slice(ue);
   return { type: e, identifier: t, sequence: s, payload: n };
 }
-class ts {
+class ss {
   constructor(e = {}) {
     re(this, "_fragAssembly", /* @__PURE__ */ new Map());
-    this.targetIp = e.targetIp, this.strategy = e.strategy || D.RELAY, this.relayUrl = e.relayUrl || null, this.nativeBridge = e.nativeBridge || null, this.identifier = e.identifier || Math.random() * 65535 | 0, this.roomCode = e.roomCode || null, this.localPeerId = e.localPeerId || null, this.remotePeerId = e.remotePeerId || null, this.pingInterval = e.pingInterval ?? 1e3, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this.onLatency = e.onLatency || null, this._ws = null, this._sequence = 0, this._closed = !1, this._pseudoPingTimer = null, this._pendingProbes = /* @__PURE__ */ new Map(), this._wasiSocket = null;
+    this.targetIp = e.targetIp, this.strategy = e.strategy || q.RELAY, this.relayUrl = e.relayUrl || null, this.nativeBridge = e.nativeBridge || null, this.identifier = e.identifier || Math.random() * 65535 | 0, this.roomCode = e.roomCode || null, this.localPeerId = e.localPeerId || null, this.remotePeerId = e.remotePeerId || null, this.pingInterval = e.pingInterval ?? 1e3, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this.onLatency = e.onLatency || null, this._ws = null, this._sequence = 0, this._closed = !1, this._pseudoPingTimer = null, this._pendingProbes = /* @__PURE__ */ new Map(), this._wasiSocket = null;
   }
   async connect() {
     if (this._serverConfig) return this._connectServer();
     switch (this._closed = !1, this.strategy) {
-      case D.RELAY:
+      case q.RELAY:
         await this._connectRelay();
         break;
-      case D.NATIVE_BRIDGE:
+      case q.NATIVE_BRIDGE:
         this._connectNativeBridge();
         break;
-      case D.WASI:
+      case q.WASI:
         await this._connectWasi();
         break;
-      case D.PSEUDO_PING:
+      case q.PSEUDO_PING:
         this._connectPseudoPing();
         break;
       default:
@@ -1963,20 +2000,20 @@ class ts {
       await this._relay.send(e);
       return;
     }
-    if (!this.connected && this.strategy !== D.PSEUDO_PING)
+    if (!this.connected && this.strategy !== q.PSEUDO_PING)
       throw new Error("ICMPTransport: not connected");
     const t = e instanceof ArrayBuffer ? new Uint8Array(e) : new Uint8Array(e);
     switch (this.strategy) {
-      case D.RELAY:
+      case q.RELAY:
         this._sendRelay(t);
         break;
-      case D.NATIVE_BRIDGE:
+      case q.NATIVE_BRIDGE:
         this._sendNativeBridge(t);
         break;
-      case D.WASI:
+      case q.WASI:
         this._sendWasi(t);
         break;
-      case D.PSEUDO_PING:
+      case q.PSEUDO_PING:
         break;
     }
   }
@@ -2139,7 +2176,7 @@ class ts {
     }, t.src = `http://${this.targetIp}:${s}/__qdp_ping?t=${Date.now()}`;
   }
   _handleIncomingPacket(e) {
-    const t = es(e);
+    const t = ts(e);
     if (!t) {
       this.onData && this.onData(e.buffer);
       return;
@@ -2179,7 +2216,7 @@ class ts {
     }
   }
   async _connectServer() {
-    this._closed = !1, this._relay = new M({
+    this._closed = !1, this._relay = new L({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -2198,7 +2235,7 @@ class ts {
   }
 }
 const V = 4, it = 215, rt = 1200;
-class ss {
+class ns {
   constructor(e = {}) {
     this.iceServers = e.iceServers || [{ urls: "stun:stun.l.google.com:19302" }], this.roomCode = e.roomCode || null, this.localPeerId = e.localPeerId || null, this.remotePeerId = e.remotePeerId || null, this.signaling = e.signaling || null, this.sampleRate = e.sampleRate || 48e3, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this.onLatency = e.onLatency || null, this._pc = null, this._sender = null, this._closed = !1, this._sequence = 0, this._audioCtx = null, this._sourceNode = null, this._scriptNode = null, this._sendQueue = [], this._fragAssembly = /* @__PURE__ */ new Map(), this._isOfferer = !1;
   }
@@ -2341,10 +2378,10 @@ class ss {
           transform(u, _) {
             const p = new Uint8Array(u.data);
             if (p.length >= V && p[0] === it && p[1] === 1) {
-              const w = p[2] << 8 | p[3];
-              if (p.length >= V + w) {
-                const g = p.slice(V, V + w);
-                d._handleIncoming(g);
+              const b = p[2] << 8 | p[3];
+              if (p.length >= V + b) {
+                const y = p.slice(V, V + b);
+                d._handleIncoming(y);
               }
             }
             _.enqueue(u);
@@ -2396,7 +2433,7 @@ class ss {
     }
   }
   async _connectServer() {
-    this._closed = !1, this._relay = new M({
+    this._closed = !1, this._relay = new L({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -2504,7 +2541,7 @@ class Tt {
     e.score = Math.max(0.01, t * 0.4 + s * 0.35 + n * 0.25);
   }
 }
-class ns {
+class is {
   constructor({ senders: e = [], linkIds: t = [], monitor: s = null } = {}) {
     this.senders = e, this.linkIds = t, this.monitor = s || new Tt();
     for (const n of this.linkIds)
@@ -2632,7 +2669,7 @@ function je({ transferId: c, chunkIndex: e, totalChunks: t, flags: s, payload: n
   const i = n ? n instanceof Uint8Array ? n : new Uint8Array(n) : new Uint8Array(0), r = new ArrayBuffer(_e + i.byteLength), o = new DataView(r);
   return o.setUint32(0, c, !0), o.setUint32(4, e, !0), o.setUint32(8, t, !0), o.setUint8(12, s), i.byteLength > 0 && new Uint8Array(r, _e).set(i), r;
 }
-function is(c) {
+function rs(c) {
   const e = new DataView(c);
   return {
     transferId: e.getUint32(0, !0),
@@ -2658,7 +2695,7 @@ function ot(c, e, t = kt) {
   }
   return i;
 }
-function rs(c, e) {
+function os(c, e) {
   const t = JSON.stringify(e), n = new TextEncoder().encode(t);
   return je({
     transferId: c,
@@ -2668,7 +2705,7 @@ function rs(c, e) {
     payload: n
   });
 }
-function os(c) {
+function as(c) {
   const e = new TextDecoder();
   return JSON.parse(e.decode(c));
 }
@@ -2682,11 +2719,11 @@ function at(c) {
     payload: e
   });
 }
-function as(c) {
+function cs(c) {
   return new DataView(c.buffer, c.byteOffset, c.byteLength).getFloat64(0, !0);
 }
-const ct = 1, ht = 2, cs = new TextEncoder(), hs = new TextDecoder();
-class ls {
+const ct = 1, ht = 2, hs = new TextEncoder(), ls = new TextDecoder();
+class ds {
   constructor(e) {
     this._send = e, this._listeners = {};
   }
@@ -2706,7 +2743,7 @@ class ls {
         }
   }
   async send(e) {
-    const t = cs.encode(e), s = new ArrayBuffer(1 + t.length);
+    const t = hs.encode(e), s = new ArrayBuffer(1 + t.length);
     new Uint8Array(s)[0] = ct, new Uint8Array(s, 1).set(t), await this._send(s);
   }
   async sendBinary(e) {
@@ -2716,7 +2753,7 @@ class ls {
   handleIncoming(e) {
     const t = new Uint8Array(e), s = t[0];
     if (s === ct) {
-      const n = hs.decode(t.slice(1));
+      const n = ls.decode(t.slice(1));
       this._emit("text", n);
     } else s === ht && this._emit("binary", e.slice(1));
   }
@@ -2728,7 +2765,7 @@ const S = {
   END: 4,
   ERROR: 5
 }, ne = new TextEncoder(), ee = new TextDecoder();
-function ds(c, e, t, s = {}, n = null) {
+function fs(c, e, t, s = {}, n = null) {
   const i = ne.encode(e), r = ne.encode(t), o = ne.encode(JSON.stringify(s)), a = n ? new Uint8Array(n) : new Uint8Array(0), h = 6 + i.length + 2 + r.length + 4 + o.length + a.length, l = new ArrayBuffer(h), d = new DataView(l), f = new Uint8Array(l);
   let u = 0;
   return d.setUint8(u, S.REQUEST), u += 1, d.setUint32(u, c, !0), u += 4, d.setUint8(u, i.length), u += 1, f.set(i, u), u += i.length, d.setUint16(u, r.length, !0), u += 2, f.set(r, u), u += r.length, d.setUint32(u, o.length, !0), u += 4, f.set(o, u), u += o.length, a.length > 0 && f.set(a, u), l;
@@ -2791,7 +2828,7 @@ function pe(c) {
       return { type: s, requestId: n };
   }
 }
-class fs {
+class us {
   constructor(e) {
     this._map = {}, this._internal = /* @__PURE__ */ new Set();
     for (const [t, s] of Object.entries(e)) {
@@ -2825,8 +2862,8 @@ class fs {
 `) : [];
   }
 }
-let us = 1;
-class _s {
+let _s = 1;
+class ps {
   constructor() {
     this._cookies = [];
   }
@@ -2837,17 +2874,17 @@ class _s {
       const o = r.split(";").map((m) => m.trim()), [a] = o, h = a.indexOf("=");
       if (h < 0) continue;
       const l = a.slice(0, h).trim(), d = a.slice(h + 1).trim();
-      let f = n.hostname, u = "/", _ = null, p = !1, w = n.protocol === "https:";
+      let f = n.hostname, u = "/", _ = null, p = !1, b = n.protocol === "https:";
       for (let m = 1; m < o.length; m++) {
-        const [W, v = ""] = o[m].split("=").map((L) => L.trim()), b = W.toLowerCase();
-        b === "domain" ? f = v.replace(/^\./, "") : b === "path" ? u = v || "/" : b === "expires" ? _ = new Date(v).getTime() : b === "max-age" ? _ = i + parseInt(v, 10) * 1e3 : b === "httponly" ? p = !0 : b === "secure" && (w = !0);
+        const [W, v = ""] = o[m].split("=").map((R) => R.trim()), g = W.toLowerCase();
+        g === "domain" ? f = v.replace(/^\./, "") : g === "path" ? u = v || "/" : g === "expires" ? _ = new Date(v).getTime() : g === "max-age" ? _ = i + parseInt(v, 10) * 1e3 : g === "httponly" ? p = !0 : g === "secure" && (b = !0);
       }
       if (_ !== null && _ < i) {
         this._cookies = this._cookies.filter((m) => !(m.name === l && m.domain === f && m.path === u));
         continue;
       }
-      const g = this._cookies.findIndex((m) => m.name === l && m.domain === f && m.path === u), x = { name: l, value: d, domain: f, path: u, expires: _, httpOnly: p, secure: w };
-      g >= 0 ? this._cookies[g] = x : this._cookies.push(x);
+      const y = this._cookies.findIndex((m) => m.name === l && m.domain === f && m.path === u), x = { name: l, value: d, domain: f, path: u, expires: _, httpOnly: p, secure: b };
+      y >= 0 ? this._cookies[y] = x : this._cookies.push(x);
     }
   }
   get(e) {
@@ -2876,9 +2913,9 @@ class _s {
     }
   }
 }
-class ps {
+class ms {
   constructor(e) {
-    this._send = e, this._pending = /* @__PURE__ */ new Map(), this.cookieJar = new _s(), this._intercepted = !1, this._origFetch = null, this._origXhrOpen = null, this._origXhrSend = null, this._interceptTarget = null, this._interceptFilter = null;
+    this._send = e, this._pending = /* @__PURE__ */ new Map(), this.cookieJar = new ps(), this._intercepted = !1, this._origFetch = null, this._origXhrOpen = null, this._origXhrSend = null, this._interceptTarget = null, this._interceptFilter = null;
   }
   intercept(e = globalThis, t = null) {
     this._intercepted && this.release(), this._interceptTarget = e, this._interceptFilter = t, this._intercepted = !0, e.__qdp_proxy_fetch = (i, r) => this.fetch(i, r), this._messageHandler = (i) => {
@@ -2954,7 +2991,7 @@ class ps {
             const u = await f.text();
             Object.defineProperty(l, "responseText", { value: u, writable: !1, configurable: !0 }), Object.defineProperty(l, "response", { value: u, writable: !1, configurable: !0 }), Object.defineProperty(l, "readyState", { value: 4, writable: !1, configurable: !0 });
             const _ = [];
-            f.headers.forEach((p, w) => _.push(`${w}: ${p}`)), Object.defineProperty(l, "_qdpRespHeaders", { value: _.join(`\r
+            f.headers.forEach((p, b) => _.push(`${b}: ${p}`)), Object.defineProperty(l, "_qdpRespHeaders", { value: _.join(`\r
 `), configurable: !0 }), l.getAllResponseHeaders = () => l._qdpRespHeaders, l.getResponseHeader = (p) => f.headers.get(p), l.onreadystatechange && l.onreadystatechange(new Event("readystatechange")), l.onload && l.onload(new Event("load")), l.dispatchEvent(new Event("readystatechange")), l.dispatchEvent(new Event("load")), l.dispatchEvent(new Event("loadend"));
           }).catch((f) => {
             Object.defineProperty(l, "readyState", { value: 4, writable: !1, configurable: !0 }), Object.defineProperty(l, "status", { value: 0, writable: !1, configurable: !0 }), l.onerror && l.onerror(new Event("error")), l.dispatchEvent(new Event("error")), l.dispatchEvent(new Event("loadend"));
@@ -2999,7 +3036,7 @@ class ps {
     return "<script>(function(){var _of=window.fetch;window.fetch=function(i,o){try{var u=new URL(typeof i==='string'?i:i.url,location.href);if(u.origin!==location.origin){return window.parent.__qdp_proxy_fetch(u.href,o||{});}}catch(e){}return _of.call(window,i,o);};})()<\/script>";
   }
   async fetch(e, t = {}) {
-    const s = us++, n = (t.method || "GET").toUpperCase(), i = Object.assign({}, t.headers || {});
+    const s = _s++, n = (t.method || "GET").toUpperCase(), i = Object.assign({}, t.headers || {});
     let r = null;
     if (t.body) {
       if (typeof t.body == "string")
@@ -3036,7 +3073,7 @@ class ps {
       l && !i.cookie && (i.cookie = l);
     } catch {
     }
-    const o = t.timeout || 3e4, a = ds(s, n, e, i, r);
+    const o = t.timeout || 3e4, a = fs(s, n, e, i, r);
     return new Promise((h, l) => {
       const d = t.signal;
       let f = !1;
@@ -3094,7 +3131,7 @@ class ps {
     let n = 0;
     for (const a of t.bodyChunks)
       s.set(a.data, n), n += a.data.length;
-    const i = new fs(t.headers), r = i.get("x-qdp-compressed") === "gzip", o = i.get("x-qdp-set-cookie");
+    const i = new us(t.headers), r = i.get("x-qdp-compressed") === "gzip", o = i.get("x-qdp-set-cookie");
     if (o)
       try {
         const a = JSON.parse(o);
@@ -3168,7 +3205,7 @@ class J {
     return new J(this.status, this.headers, this._body.slice(0));
   }
 }
-const ms = 16 * 1024, se = /* @__PURE__ */ new Map(), gs = 200, ys = /* @__PURE__ */ new Set([200, 203, 204, 206, 300, 301, 404, 405, 410, 414, 501]), ws = /* @__PURE__ */ new Set([
+const gs = 16 * 1024, se = /* @__PURE__ */ new Map(), ys = 200, ws = /* @__PURE__ */ new Set([200, 203, 204, 206, 300, 301, 404, 405, 410, 414, 501]), bs = /* @__PURE__ */ new Set([
   "content-encoding",
   "transfer-encoding",
   "content-length",
@@ -3179,11 +3216,11 @@ const ms = 16 * 1024, se = /* @__PURE__ */ new Map(), gs = 200, ys = /* @__PURE_
   "proxy-authorization",
   "te",
   "trailer"
-]), bs = /* @__PURE__ */ new Set([
+]), Cs = /* @__PURE__ */ new Set([
   "host",
   "origin",
   "referer"
-]), Cs = /* @__PURE__ */ new Set([
+]), Ss = /* @__PURE__ */ new Set([
   "content-security-policy",
   "content-security-policy-report-only",
   "x-frame-options",
@@ -3199,9 +3236,9 @@ const ms = 16 * 1024, se = /* @__PURE__ */ new Map(), gs = 200, ys = /* @__PURE_
   "access-control-max-age",
   "strict-transport-security"
 ]), Se = "<script data-qdp>!function(){var _i=0,_c={},_p,h=/^https?:\\/\\//,D=Object.defineProperty;function g(){if(_p)return _p;try{if(_p=window.__qdp_proxy_fetch)return _p}catch(e){}try{if(_p=window.parent.__qdp_proxy_fetch)return _p}catch(e){}try{if(_p=window.top.__qdp_proxy_fetch)return _p}catch(e){}}window.addEventListener('message',function(e){var m=e.data;if(!m||m.type!=='qdp-fetch-res')return;var c=_c[m.id];if(!c)return;delete _c[m.id];if(m.error)return c[1](new Error(m.error));c[0](new Response(m.body,{status:m.status,statusText:m.statusText||'',headers:m.headers||{}}))});function P(u,o){var fn=g();if(fn)return fn(u,o||{});var id=++_i;return new Promise(function(ok,no){_c[id]=[ok,no];try{var t=window.parent!==window?window.parent:window.top;t.postMessage({type:'qdp-fetch',id:id,url:u,method:(o&&o.method)||'GET',headers:(o&&o.headers)||{},body:(o&&o.body)||null},'*')}catch(e){delete _c[id];no(e)}})}var f=fetch;fetch=function(i,o){var u=i&&i.url||''+i;return h.test(u)?P(u,o||{}):f.apply(this,arguments)};var X=XMLHttpRequest.prototype,O=X.open,S=X.send,H=X.setRequestHeader;X.open=function(m,u){this._m=m;this._u=''+u;this._h={};return O.apply(this,arguments)};X.setRequestHeader=function(n,v){this._h&&(this._h[n]=v);return H.apply(this,arguments)};X.send=function(b){var x=this,u=x._u;if(h.test(u)){var o={method:x._m||'GET',headers:x._h||{}};b!=null&&(o.body=b);P(u,o).then(function(r){D(x,'status',{value:r.status,configurable:1});D(x,'statusText',{value:r.statusText||'',configurable:1});return r.text().then(function(t){D(x,'responseText',{value:t,configurable:1});D(x,'response',{value:t,configurable:1});D(x,'readyState',{value:4,configurable:1});try{x.dispatchEvent(new Event('readystatechange'))}catch(e){}try{x.onreadystatechange&&x.onreadystatechange()}catch(e){}try{x.dispatchEvent(new Event('load'))}catch(e){}try{x.onload&&x.onload()}catch(e){}try{x.dispatchEvent(new Event('loadend'))}catch(e){}})}).catch(function(){D(x,'readyState',{value:4,configurable:1});D(x,'status',{value:0,configurable:1});try{x.dispatchEvent(new Event('error'))}catch(e){}try{x.onerror&&x.onerror()}catch(e){}try{x.dispatchEvent(new Event('loadend'))}catch(e){}});return}return S.apply(this,arguments)};try{var hp=history.pushState,hr=history.replaceState;history.pushState=function(s,t,u){try{return hp.call(this,s,t,u)}catch(e){return hp.call(this,s,t)}};history.replaceState=function(s,t,u){try{return hr.call(this,s,t,u)}catch(e){return hr.call(this,s,t)}}}catch(e){}try{if(navigator.serviceWorker)navigator.serviceWorker.register=function(){return Promise.reject(new Error('blocked'))}}catch(e){}try{var sb=navigator.sendBeacon;if(sb)navigator.sendBeacon=function(u,b){if(h.test(u)){P(u,{method:'POST',body:b});return true}return sb.apply(navigator,arguments)}}catch(e){}try{var wo=window.open;window.open=function(u){if(u&&h.test(u)){try{window.parent.postMessage({type:'qdp-nav',url:u},'*')}catch(e){}return null}return wo.apply(this,arguments)}}catch(e){}document.addEventListener('error',function(e){var el=e.target,t,s;if(!el||!el.tagName||el._s)return;t=el.tagName;s=t==='LINK'?el.href||'':el.src||el.currentSrc||el.data||'';if(!h.test(s))return;el._s=1;t==='LINK'&&(el.rel||'').includes('stylesheet')?P(s,{}).then(function(r){return r.text()}).then(function(t){var n=document.createElement('style');n.textContent=t;el.parentNode&&el.parentNode.insertBefore(n,el);el.disabled=1}).catch(function(){}):t==='SCRIPT'?P(s,{}).then(function(r){return r.text()}).then(function(t){var n=document.createElement('script');n.textContent=t;document.head.appendChild(n)}).catch(function(){}):P(s,{}).then(function(r){return r.blob()}).then(function(b){var u=URL.createObjectURL(b);el.src!==void 0?el.src=u:el.data!==void 0&&(el.data=u)}).catch(function(){})},1);document.addEventListener('click',function(e){for(var n=e.target;n;n=n.parentElement)if(n.tagName==='A'&&h.test(n.href||'')){e.preventDefault();e.stopPropagation();try{window.parent.postMessage({type:'qdp-nav',url:n.href},'*')}catch(x){}break}},1);document.addEventListener('submit',function(e){var f=e.target,u=f.action||'';if(!h.test(u))return;e.preventDefault();(f.method||'get').toUpperCase()==='GET'&&(u+=(~u.indexOf('?')?'&':'?')+new URLSearchParams(new FormData(f)));try{window.parent.postMessage({type:'qdp-nav',url:u},'*')}catch(x){}},1)}()<\/script>";
-class Ss {
+class Is {
   constructor(e, t = {}) {
-    this._send = e, this._allowList = t.allowList || [], this._blockList = t.blockList || [], this._chunkSize = t.chunkSize || ms, this._compress = t.compress || !1, this._active = !1;
+    this._send = e, this._allowList = t.allowList || [], this._blockList = t.blockList || [], this._chunkSize = t.chunkSize || gs, this._compress = t.compress || !1, this._active = !1;
   }
   serve(e) {
     e && (e.chunkSize != null && (this._chunkSize = e.chunkSize), e.compress != null && (this._compress = e.compress), e.allowList != null && (this._allowList = e.allowList), e.blockList != null && (this._blockList = e.blockList)), this._active = !0;
@@ -3224,108 +3261,108 @@ class Ss {
     }
     try {
       const h = {}, l = {};
-      for (const [I, U] of Object.entries(r))
-        I.startsWith("x-proxy-opt-") ? l[I.slice(12)] = U : h[I] = U;
+      for (const [I, O] of Object.entries(r))
+        I.startsWith("x-proxy-opt-") ? l[I.slice(12)] = O : h[I] = O;
       const d = { method: n, headers: h };
       o && n !== "GET" && n !== "HEAD" && (d.body = o), l.redirect && (d.redirect = l.redirect), l.cache && (d.cache = l.cache), l.mode && (d.mode = l.mode), l.referrer && (d.referrer = l.referrer), l.referrerpolicy && (d.referrerPolicy = l.referrerpolicy), l.credentials && (d.credentials = l.credentials);
       const f = new URL(i), u = f.origin, _ = f.host, p = h.origin || "";
-      let w;
+      let b;
       try {
         const I = new URL(p);
-        w = I.origin === u ? "same-origin" : I.hostname.endsWith("." + _) || _.endsWith("." + I.hostname) ? "same-site" : "cross-site";
+        b = I.origin === u ? "same-origin" : I.hostname.endsWith("." + _) || _.endsWith("." + I.hostname) ? "same-site" : "cross-site";
       } catch {
-        w = "none";
+        b = "none";
       }
-      const g = (h.accept || "").toLowerCase();
+      const y = (h.accept || "").toLowerCase();
       let x, m;
-      g.includes("text/html") ? (x = "document", m = "navigate") : g.includes("application/json") || g.startsWith("*/*") ? (x = "empty", m = "cors") : g.includes("image/") ? (x = "image", m = "no-cors") : g.includes("text/css") ? (x = "style", m = "cors") : g.includes("application/javascript") || g.includes("text/javascript") ? (x = "script", m = "no-cors") : g.includes("font/") ? (x = "font", m = "cors") : (x = "empty", m = "cors");
-      for (const I of bs) delete h[I];
-      h.host = _, h.origin || (h.origin = u), h.referer || (h.referer = f.href), h["user-agent"] || (h["user-agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"), h.accept || (h.accept = "*/*"), h["accept-language"] || (h["accept-language"] = "en-US,en;q=0.9"), h["accept-encoding"] = "identity", h["sec-fetch-site"] = w, h["sec-fetch-mode"] = m, h["sec-fetch-dest"] = x, h["sec-ch-ua"] = '"Google Chrome";v="124", "Chromium";v="124", "Not-A.Brand";v="99"', h["sec-ch-ua-mobile"] = "?0", h["sec-ch-ua-platform"] = '"Windows"', o && (h["content-length"] = String(o.byteLength || 0));
+      y.includes("text/html") ? (x = "document", m = "navigate") : y.includes("application/json") || y.startsWith("*/*") ? (x = "empty", m = "cors") : y.includes("image/") ? (x = "image", m = "no-cors") : y.includes("text/css") ? (x = "style", m = "cors") : y.includes("application/javascript") || y.includes("text/javascript") ? (x = "script", m = "no-cors") : y.includes("font/") ? (x = "font", m = "cors") : (x = "empty", m = "cors");
+      for (const I of Cs) delete h[I];
+      h.host = _, h.origin || (h.origin = u), h.referer || (h.referer = f.href), h["user-agent"] || (h["user-agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"), h.accept || (h.accept = "*/*"), h["accept-language"] || (h["accept-language"] = "en-US,en;q=0.9"), h["accept-encoding"] = "identity", h["sec-fetch-site"] = b, h["sec-fetch-mode"] = m, h["sec-fetch-dest"] = x, h["sec-ch-ua"] = '"Google Chrome";v="124", "Chromium";v="124", "Not-A.Brand";v="99"', h["sec-ch-ua-mobile"] = "?0", h["sec-ch-ua-platform"] = '"Windows"', o && (h["content-length"] = String(o.byteLength || 0));
       const W = n === "GET" || n === "HEAD" ? `${n}:${i}` : null, v = W ? se.get(W) : null;
       if (v) {
-        const I = h["if-none-match"], U = h["if-modified-since"];
-        if (I && I === v.etag || U && v.lastModified && new Date(U) >= new Date(v.lastModified)) {
+        const I = h["if-none-match"], O = h["if-modified-since"];
+        if (I && I === v.etag || O && v.lastModified && new Date(O) >= new Date(v.lastModified)) {
           await this._send(lt(s, 304, { etag: v.etag || "", "last-modified": v.lastModified || "" })), await this._send(dt(s));
           return;
         }
         v.etag && (h["if-none-match"] = v.etag), v.lastModified && (h["if-modified-since"] = v.lastModified);
       }
-      const b = await fetch(i, d), L = {}, me = [];
-      b.headers.forEach((I, U) => {
-        const Q = U.toLowerCase();
-        if (!ws.has(Q) && !Cs.has(Q)) {
+      const g = await fetch(i, d), R = {}, me = [];
+      g.headers.forEach((I, O) => {
+        const Q = O.toLowerCase();
+        if (!bs.has(Q) && !Ss.has(Q)) {
           if (Q === "set-cookie") {
             me.push(I);
             return;
           }
-          L[U] = I;
+          R[O] = I;
         }
-      }), me.length > 0 && (L["x-qdp-set-cookie"] = JSON.stringify(me));
-      const Ve = b.headers.get("etag"), Ge = b.headers.get("last-modified"), Je = b.headers.get("cache-control") || "", qt = Je.includes("no-store") || Je.includes("no-cache");
-      if (W && !qt && ys.has(b.status) && (Ve || Ge) && (se.size >= gs && se.delete(se.keys().next().value), se.set(W, { etag: Ve, lastModified: Ge })), L["x-qdp-status-text"] = b.statusText, L["x-qdp-url"] = b.url, b.redirected && (L["x-qdp-redirected"] = "1"), this._compress && (L["x-qdp-compressed"] = "gzip"), await this._send(lt(s, b.status, L)), b.body) {
-        const I = (b.headers.get("content-type") || "").toLowerCase(), U = I.includes("text/css"), Q = I.includes("text/html"), ze = b.url || i;
-        let Y = b.body;
-        if (U) {
-          const K = await new Response(Y).arrayBuffer(), H = this._rewriteCssUrls(new TextDecoder().decode(K), ze), O = new TextEncoder().encode(H), R = this._chunkSize;
+      }), me.length > 0 && (R["x-qdp-set-cookie"] = JSON.stringify(me));
+      const Ve = g.headers.get("etag"), Ge = g.headers.get("last-modified"), Je = g.headers.get("cache-control") || "", qt = Je.includes("no-store") || Je.includes("no-cache");
+      if (W && !qt && ws.has(g.status) && (Ve || Ge) && (se.size >= ys && se.delete(se.keys().next().value), se.set(W, { etag: Ve, lastModified: Ge })), R["x-qdp-status-text"] = g.statusText, R["x-qdp-url"] = g.url, g.redirected && (R["x-qdp-redirected"] = "1"), this._compress && (R["x-qdp-compressed"] = "gzip"), await this._send(lt(s, g.status, R)), g.body) {
+        const I = (g.headers.get("content-type") || "").toLowerCase(), O = I.includes("text/css"), Q = I.includes("text/html"), ze = g.url || i;
+        let Y = g.body;
+        if (O) {
+          const K = await new Response(Y).arrayBuffer(), H = this._rewriteCssUrls(new TextDecoder().decode(K), ze), D = new TextEncoder().encode(H), E = this._chunkSize;
           let A = 0;
           if (this._compress && typeof CompressionStream < "u") {
             const C = new CompressionStream("gzip"), $ = C.writable.getWriter();
-            $.write(O), $.close();
+            $.write(D), $.close();
             const Z = C.readable.getReader();
             try {
               for (; ; ) {
-                const { done: ge, value: E } = await Z.read();
+                const { done: ge, value: U } = await Z.read();
                 if (ge) break;
-                if (E != null && E.length)
-                  for (let F = 0; F < E.length; F += R)
-                    await this._send(te(s, A++, E.subarray(F, F + R)));
+                if (U != null && U.length)
+                  for (let F = 0; F < U.length; F += E)
+                    await this._send(te(s, A++, U.subarray(F, F + E)));
               }
             } finally {
               Z.cancel().catch(() => {
               });
             }
           } else
-            for (let C = 0; C < O.length; C += R)
-              await this._send(te(s, A++, O.subarray(C, C + R)));
+            for (let C = 0; C < D.length; C += E)
+              await this._send(te(s, A++, D.subarray(C, C + E)));
           a = A;
         } else if (Q) {
           const K = await new Response(Y).arrayBuffer();
           let H = new TextDecoder().decode(K);
           H = this._rewriteHtml(H, ze);
-          const O = new TextEncoder().encode(H), R = this._chunkSize;
+          const D = new TextEncoder().encode(H), E = this._chunkSize;
           let A = 0;
           if (this._compress && typeof CompressionStream < "u") {
             const C = new CompressionStream("gzip"), $ = C.writable.getWriter();
-            $.write(O), $.close();
+            $.write(D), $.close();
             const Z = C.readable.getReader();
             try {
               for (; ; ) {
-                const { done: ge, value: E } = await Z.read();
+                const { done: ge, value: U } = await Z.read();
                 if (ge) break;
-                if (E != null && E.length)
-                  for (let F = 0; F < E.length; F += R)
-                    await this._send(te(s, A++, E.subarray(F, F + R)));
+                if (U != null && U.length)
+                  for (let F = 0; F < U.length; F += E)
+                    await this._send(te(s, A++, U.subarray(F, F + E)));
               }
             } finally {
               Z.cancel().catch(() => {
               });
             }
           } else
-            for (let C = 0; C < O.length; C += R)
-              await this._send(te(s, A++, O.subarray(C, C + R)));
+            for (let C = 0; C < D.length; C += E)
+              await this._send(te(s, A++, D.subarray(C, C + E)));
           a = A;
         } else {
           this._compress && typeof CompressionStream < "u" && (Y = Y.pipeThrough(new CompressionStream("gzip")));
           const K = Y.getReader();
           let H = 0;
-          const O = this._chunkSize;
+          const D = this._chunkSize;
           try {
             for (; ; ) {
-              const { done: R, value: A } = await K.read();
-              if (R) break;
+              const { done: E, value: A } = await K.read();
+              if (E) break;
               if (A != null && A.length)
-                for (let C = 0; C < A.length; C += O) {
-                  const $ = A.subarray(C, C + O);
+                for (let C = 0; C < A.length; C += D) {
+                  const $ = A.subarray(C, C + D);
                   await this._send(te(s, H++, $));
                 }
             }
@@ -3528,7 +3565,7 @@ class xt {
     return e === t;
   }
 }
-class Vs {
+class Gs {
   constructor(e = []) {
     this._hops = [], this._connections = [], this._active = !1;
     for (const t of e)
@@ -3590,7 +3627,7 @@ class Vs {
     this._hops = [];
   }
 }
-class Is {
+class vs {
   constructor(e, t) {
     this.pc = e, this._renegotiate = t, this.localStream = null, this.remoteStream = null, this._senders = [], this._listeners = {}, this.pc.ontrack = (s) => {
       this.remoteStream || (this.remoteStream = new MediaStream()), this.remoteStream.addTrack(s.track), this._emit("remoteStream", this.remoteStream), this._emit("track", s.track, s.streams);
@@ -3649,7 +3686,7 @@ class Is {
   }
 }
 const ft = 1, At = 2, Rt = 3, De = new TextEncoder(), Ie = new TextDecoder();
-class vs {
+class Ps {
   constructor(e) {
     this._send = e, this._streams = /* @__PURE__ */ new Map(), this._listeners = {};
   }
@@ -3736,9 +3773,17 @@ const k = {
   MESSAGE: 241,
   PROXY: 242,
   STREAM: 243
-}, Ps = [
-  { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] },
+}, Ts = [
+  { urls: [
+    "stun:stun.l.google.com:19302",
+    "stun:stun1.l.google.com:19302",
+    "stun:stun2.l.google.com:19302",
+    "stun:stun3.l.google.com:19302",
+    "stun:stun4.l.google.com:19302"
+  ] },
   { urls: "stun:stun.cloudflare.com:3478" },
+  { urls: "stun:global.stun.twilio.com:3478" },
+  { urls: "stun:stun.stunprotocol.org:3478" },
   {
     urls: [
       "turn:openrelay.metered.ca:80",
@@ -3755,13 +3800,13 @@ function Et() {
   return ie ? Promise.resolve(ie) : (ve || (ve = RTCPeerConnection.generateCertificate({ name: "ECDSA", namedCurve: "P-256" }).then((c) => (ie = c, c)).catch(() => null)), ve);
 }
 Et();
-function q(c, e) {
+function M(c, e) {
   const t = new Uint8Array(e), s = new ArrayBuffer(1 + t.length), n = new Uint8Array(s);
   return n[0] = c, n.set(t, 1), s;
 }
-class Ts {
+class ks {
   constructor({
-    iceServers: e = Ps,
+    iceServers: e = Ts,
     dataChannels: t = 32,
     chunkSize: s = kt,
     proxy: n = {},
@@ -3776,16 +3821,19 @@ class Ts {
     iceCandidatePoolSize: u = 10,
     signalServer: _ = null,
     webTransport: p = null,
-    dhtNodes: w = null,
-    icmp: g = null,
+    dhtNodes: b = null,
+    icmp: y = null,
     srtp: x = null,
-    relay: m = null
+    relay: m = null,
+    iceRacing: W = !1,
+    iceRacingTimeout: v = 1500,
+    iceRacingTopN: g = 0
   } = {}) {
-    this.iceServers = e, this.iceTransportPolicy = f, this.iceCandidatePoolSize = u, this.dataChannelCount = t, this.chunkSize = s, this.isHost = i, this.requireRoomCode = r, this.trackerUrls = o, this.driveSignalConfig = a, this.mqttConfig = h, this.bondTransports = l, this._bondSet = Array.isArray(l) ? new Set(l.map((W) => W.toLowerCase())) : null, this.signalServerUrl = _, this.serverMode = d, this.remoteIsHost = !1, this.webTransportConfig = p, this.dhtNodes = w, this.icmpConfig = g, this.srtpConfig = x, this.relayConfig = m, this.pc = null, this.signaling = null, this.pool = null, this.bonding = null, this.monitor = new Tt(), this.roomCode = null, this.isOfferer = !1, this._listeners = {}, this._pendingMeta = /* @__PURE__ */ new Map(), this._probeTimers = /* @__PURE__ */ new Map(), this._negotiationState = "idle", this._pcCreated = !1, this._iceRestartPending = !1, this._pendingIceCandidates = [], this._pendingRemoteCandidates = [], this._preConnectedWs = null, this._preWarmedManager = null, this._proxyOpts = n, this.message = null, this._proxyClient = null, this._proxyServer = null, this.proxy = null, this.media = null, this.stream = null, this._mqttTransport = null, this._mqttReconnectTimer = null, this._mqttReconnectAttempt = 0, this._allDcDead = !1, this._webTransport = null, this._e2e = null, this._e2ePublicKeyB64 = null, this._icmpTransport = null, this._srtpTransport = null, this._proxyRelay = null;
+    this.iceServers = e, this.iceTransportPolicy = f, this.iceCandidatePoolSize = u, this.dataChannelCount = t, this.chunkSize = s, this.isHost = i, this.requireRoomCode = r, this.trackerUrls = o, this.driveSignalConfig = a, this.mqttConfig = h, this.bondTransports = l, this._bondSet = Array.isArray(l) ? new Set(l.map((R) => R.toLowerCase())) : null, this.signalServerUrl = _, this.serverMode = d, this.remoteIsHost = !1, this.webTransportConfig = p, this.dhtNodes = b, this.icmpConfig = y, this.srtpConfig = x, this.relayConfig = m, this.pc = null, this.signaling = null, this.pool = null, this.bonding = null, this.monitor = new Tt(), this.roomCode = null, this.isOfferer = !1, this._listeners = {}, this._pendingMeta = /* @__PURE__ */ new Map(), this._probeTimers = /* @__PURE__ */ new Map(), this._negotiationState = "idle", this._pcCreated = !1, this._iceRestartPending = !1, this._pendingIceCandidates = [], this._pendingRemoteCandidates = [], this._preConnectedWs = null, this._preWarmedManager = null, this._proxyOpts = n, this.message = null, this._proxyClient = null, this._proxyServer = null, this.proxy = null, this.media = null, this.stream = null, this._mqttTransport = null, this._mqttReconnectTimer = null, this._mqttReconnectAttempt = 0, this._allDcDead = !1, this._webTransport = null, this._e2e = null, this._e2ePublicKeyB64 = null, this._icmpTransport = null, this._srtpTransport = null, this._proxyRelay = null, this._iceRacing = W, this._iceRacingTimeout = v, this._iceRacingTopN = g, this._iceProbePromise = null;
   }
   warmup() {
     var e;
-    if (Et(), this._pcCreated || this._createPeerConnection(), this.driveSignalConfig && y.warmupToken(this.driveSignalConfig).catch(() => {
+    if (Et(), this._iceRacing ? this._probeIceServers() : this._pcCreated || this._createPeerConnection(), this.driveSignalConfig && w.warmupToken(this.driveSignalConfig).catch(() => {
     }), this.signalServerUrl && !this._preConnectedWs && tt.preConnect(this.signalServerUrl).then((t) => {
       this._preConnectedWs = t;
     }).catch(() => {
@@ -3794,6 +3842,15 @@ class Ts {
       this._preWarmedManager = new yt(t), this._preWarmedConnectPromise = this._preWarmedManager.connect().catch(() => {
       });
     }
+  }
+  _probeIceServers() {
+    return this._iceRacing ? (this._iceProbePromise || (this._iceProbePromise = Bt.probe(this.iceServers, {
+      timeout: this._iceRacingTimeout,
+      topN: this._iceRacingTopN
+    }).then((e) => {
+      this.iceServers = e;
+    }).catch(() => {
+    })), this._iceProbePromise) : Promise.resolve();
   }
   getVersion() {
     return "3.0.0";
@@ -3815,7 +3872,7 @@ class Ts {
   }
   async createRoom(e = null) {
     var t;
-    if (this.isOfferer = !0, e ? this.roomCode = e : this.requireRoomCode ? this.roomCode = Math.random().toString(36).substring(2, 8).toUpperCase() : this.roomCode = "QDP-PUBLIC-SWARM", (t = this.mqttConfig) != null && t.e2e && (this._e2e = new st(), await this._e2e.init(), this._e2ePublicKeyB64 = btoa(String.fromCharCode(...await this._e2e.getPublicKey()))), this._pcCreated || this._createPeerConnection(), !this.driveSignalConfig) {
+    if (this.isOfferer = !0, e ? this.roomCode = e : this.requireRoomCode ? this.roomCode = Math.random().toString(36).substring(2, 8).toUpperCase() : this.roomCode = "QDP-PUBLIC-SWARM", (t = this.mqttConfig) != null && t.e2e && (this._e2e = new st(), await this._e2e.init(), this._e2ePublicKeyB64 = btoa(String.fromCharCode(...await this._e2e.getPublicKey()))), this._iceRacing && await this._probeIceServers(), this._pcCreated || this._createPeerConnection(), !this.driveSignalConfig) {
       this._negotiationState = "offering";
       const s = await this.pc.createOffer();
       await this.pc.setLocalDescription(s);
@@ -3844,7 +3901,7 @@ class Ts {
         return Promise.reject(new Error("QDP is configured with requireRoomCode=true, but no code was provided to joinRoom()."));
       this.roomCode = "QDP-PUBLIC-SWARM";
     }
-    return (t = this.mqttConfig) != null && t.e2e && !this._e2e && (this._e2e = new st(), await this._e2e.init(), this._e2ePublicKeyB64 = btoa(String.fromCharCode(...await this._e2e.getPublicKey()))), this._pcCreated || this._createPeerConnection(), this._preWarmedConnectPromise && (await this._preWarmedConnectPromise, this._preWarmedConnectPromise = null), new Promise((s, n) => {
+    return (t = this.mqttConfig) != null && t.e2e && !this._e2e && (this._e2e = new st(), await this._e2e.init(), this._e2ePublicKeyB64 = btoa(String.fromCharCode(...await this._e2e.getPublicKey()))), this._iceRacing && await this._probeIceServers(), this._pcCreated || this._createPeerConnection(), this._preWarmedConnectPromise && (await this._preWarmedConnectPromise, this._preWarmedConnectPromise = null), new Promise((s, n) => {
       this._joinResolver = s, this.signaling = this._createSignaling(!1), this._wrapSignalingSend(), this.signaling.onOpen = () => {
         this._emit("wss-open", 0);
       }, this.signaling.onMessage = (i) => {
@@ -3856,19 +3913,19 @@ class Ts {
   }
   async send(e) {
     if (!this.bonding) throw new Error("Not connected");
-    const t = _t++, n = ot(e, t, this.chunkSize).map((i) => q(k.CHUNK, i));
+    const t = _t++, n = ot(e, t, this.chunkSize).map((i) => M(k.CHUNK, i));
     await this.bonding.sendChunks(n);
   }
   async sendFile(e) {
     if (!this.bonding) throw new Error("Not connected");
-    const t = _t++, s = await e.arrayBuffer(), n = { name: e.name, size: e.size, type: e.type }, i = q(k.CHUNK, rs(t, n));
+    const t = _t++, s = await e.arrayBuffer(), n = { name: e.name, size: e.size, type: e.type }, i = M(k.CHUNK, os(t, n));
     for (const a of this.bonding.senders)
       try {
         await a(i);
       } catch {
       }
     await new Promise((a) => setTimeout(a, 50));
-    const r = ot(s, t, this.chunkSize), o = r.map((a) => q(k.CHUNK, a));
+    const r = ot(s, t, this.chunkSize), o = r.map((a) => M(k.CHUNK, a));
     this._emit("send-start", { transferId: t, name: e.name, totalChunks: r.length }), await this.bonding.sendChunks(o), this._emit("send-complete", { transferId: t, name: e.name });
   }
   getStats() {
@@ -3995,14 +4052,14 @@ class Ts {
   }
   _createSignaling(e) {
     if (this.driveSignalConfig)
-      return new y(this.roomCode, e, this.driveSignalConfig);
+      return new w(this.roomCode, e, this.driveSignalConfig);
     const t = !!this.mqttConfig, s = !this.signalServerUrl && !this.driveSignalConfig, n = !!(this.dhtNodes && this.dhtNodes.length), i = [];
-    if (t && i.push(new Vt(this.roomCode, e, this.mqttConfig)), n && i.push(new Xt(this.roomCode, e, this.dhtNodes)), s) {
+    if (t && i.push(new Gt(this.roomCode, e, this.mqttConfig)), n && i.push(new Qt(this.roomCode, e, this.dhtNodes)), s) {
       const o = new fe(this.roomCode, e, this.trackerUrls);
       this._preWarmedManager && (o.useManager(this._preWarmedManager), this._preWarmedManager = null), i.push(o);
     }
     if (this.bondTransports && i.length >= 2)
-      return new Jt(i);
+      return new zt(i);
     if (i.length > 0)
       return i[0];
     if (this.signalServerUrl) {
@@ -4086,7 +4143,7 @@ class Ts {
       this._emit("channel-close", t);
     }), this.pool.onMessage((t, s) => {
       this._routeIncoming(s, `dc-${t}`);
-    }), this.pool.createChannels(), this.media = new Is(this.pc, () => this._renegotiate());
+    }), this.pool.createChannels(), this.media = new vs(this.pc, () => this._renegotiate());
   }
   async _startOffer() {
     const e = await this.pc.createOffer();
@@ -4174,14 +4231,14 @@ class Ts {
     const e = async (s) => {
       this.bonding && this.bonding.senders.length > 0 && await this.bonding.sendSingle(s);
     }, t = this.serverMode ? async (s) => {
-      const n = q(k.PROXY, s);
+      const n = M(k.PROXY, s);
       this.pool && this.pool.getOpenCount() > 0 ? this.pool.sendImmediate(n) === -1 && await this.pool.send(n) : await e(n);
     } : async (s) => {
-      await e(q(k.PROXY, s));
+      await e(M(k.PROXY, s));
     };
-    this.message = new ls(async (s) => {
-      await e(q(k.MESSAGE, s));
-    }), this._proxyClient = new ps(t), this._proxyServer = new Ss(t, this._proxyOpts), this.proxy = {
+    this.message = new ds(async (s) => {
+      await e(M(k.MESSAGE, s));
+    }), this._proxyClient = new ms(t), this._proxyServer = new Is(t, this._proxyOpts), this.proxy = {
       fetch: (s, n) => this._proxyClient.fetch(s, n),
       intercept: (s, n) => this._proxyClient.intercept(s, n),
       release: () => this._proxyClient.release(),
@@ -4196,15 +4253,15 @@ class Ts {
         blockList: n.blockList || [],
         onRelay: n.onRelay || null
       }), this._proxyRelay.setUpstream(async (i) => {
-        const r = q(k.PROXY, i);
+        const r = M(k.PROXY, i);
         s.bonding && s.bonding.senders.length > 0 && await s.bonding.sendSingle(r);
       }), this._proxyRelay.setDownstream(t), this._proxyRelay.start(), this._proxyRelay),
       stopRelay: () => {
         this._proxyRelay && (this._proxyRelay.stop(), this._proxyRelay = null);
       },
       getRelayStats: () => this._proxyRelay ? this._proxyRelay.getStats() : null
-    }, this.stream = new vs(async (s) => {
-      await e(q(k.STREAM, s));
+    }, this.stream = new Ps(async (s) => {
+      await e(M(k.STREAM, s));
     });
   }
   _updateBondingPaths() {
@@ -4242,7 +4299,7 @@ class Ts {
         await this._srtpTransport.send(a), this.monitor.recordBytesSent(o, a.byteLength || a.length);
       });
     }
-    this._allDcDead && !i && ((r = this._mqttTransport) != null && r.connected) && this._emit("transport-failover", { from: "webrtc", to: "mqtt" }), !this._allDcDead && i && this._emit("transport-failover", { from: "mqtt", to: "webrtc" }), this.bonding ? this.bonding.updatePaths(e, t) : (this.bonding = new ns({
+    this._allDcDead && !i && ((r = this._mqttTransport) != null && r.connected) && this._emit("transport-failover", { from: "webrtc", to: "mqtt" }), !this._allDcDead && i && this._emit("transport-failover", { from: "mqtt", to: "webrtc" }), this.bonding ? this.bonding.updatePaths(e, t) : (this.bonding = new is({
       senders: e,
       linkIds: t,
       monitor: this.monitor
@@ -4274,7 +4331,7 @@ class Ts {
         e2e: this._e2e,
         server: this.mqttConfig.server
       }, this.mqttConfig.brokerUrls && this.mqttConfig.brokerUrls.length > 1) {
-        this._mqttTransport = new Qt({
+        this._mqttTransport = new Yt({
           brokerUrls: this.mqttConfig.brokerUrls,
           roomCode: this.roomCode,
           localPeerId: e,
@@ -4331,7 +4388,7 @@ class Ts {
     var t;
     if (!this.webTransportConfig || !this.signaling) return;
     const e = this.signaling.remotePeerId;
-    e && (this._webTransport = new zt({
+    e && (this._webTransport = new Xt({
       url: this.webTransportConfig.url,
       roomCode: this.roomCode,
       localPeerId: this.signaling.peerId || ((t = this._mqttTransportOpts) == null ? void 0 : t.localPeerId) || "qdp-wt",
@@ -4362,7 +4419,7 @@ class Ts {
   }
   _startICMPTransport() {
     var e, t;
-    this.icmpConfig && (this._icmpTransport = new ts({
+    this.icmpConfig && (this._icmpTransport = new ss({
       targetIp: this.icmpConfig.targetIp,
       strategy: this.icmpConfig.strategy || "relay",
       relayUrl: this.icmpConfig.relayUrl,
@@ -4402,7 +4459,7 @@ class Ts {
   }
   _startSRTPTransport() {
     var e, t;
-    if (this.srtpConfig && (this._srtpTransport = new ss({
+    if (this.srtpConfig && (this._srtpTransport = new ns({
       iceServers: this.srtpConfig.iceServers || this.iceServers,
       roomCode: this.roomCode,
       localPeerId: (e = this.signaling) == null ? void 0 : e.peerId,
@@ -4450,13 +4507,13 @@ class Ts {
     }
   }
   _handleChunkData(e, t) {
-    const s = is(e);
+    const s = rs(e);
     if (s.flags & z.PROBE) {
       this._handleProbe(s, t);
       return;
     }
     if (s.flags & z.META) {
-      const n = os(s.payload);
+      const n = as(s.payload);
       this._pendingMeta.set(s.transferId, n), this._emit("file-incoming", { transferId: s.transferId, ...n });
       return;
     }
@@ -4477,7 +4534,7 @@ class Ts {
       const n = setInterval(async () => {
         const i = at(performance.now());
         try {
-          await this.pool.sendOnChannel(t, q(k.CHUNK, i)), this.monitor.recordProbeSent(s);
+          await this.pool.sendOnChannel(t, M(k.CHUNK, i)), this.monitor.recordProbeSent(s);
         } catch {
         }
       }, e);
@@ -4486,7 +4543,7 @@ class Ts {
   }
   _handleProbe(e, t) {
     if (e.payload) {
-      const s = as(e.payload), n = performance.now() - s;
+      const s = cs(e.payload), n = performance.now() - s;
       n > 0 && n < 3e4 && this.monitor.recordProbeResponse(t, n);
     }
   }
@@ -4498,7 +4555,7 @@ class Ts {
       if (!this._mqttTransport || !this._mqttTransport.connected) return;
       const n = at(performance.now());
       try {
-        await this._mqttTransport.send(q(k.CHUNK, n)), this.monitor.recordProbeSent(t);
+        await this._mqttTransport.send(M(k.CHUNK, n)), this.monitor.recordProbeSent(t);
       } catch {
       }
     }, e);
@@ -4509,8 +4566,8 @@ class Ts {
     e && (clearInterval(e), this._probeTimers.delete("mqtt-0"));
   }
 }
-const Gs = Ts;
-class Js {
+const Js = ks;
+class zs {
   constructor(e = [], t = {}) {
     this._brokerConfigs = e, this._connections = [], this._topicFilter = t.topicFilter || null, this._topicRewrite = t.topicRewrite || null, this._closed = !1, this.onRelay = t.onRelay || null, this.onOpen = t.onOpen || null, this.onClose = t.onClose || null;
   }
@@ -4604,15 +4661,15 @@ const Pe = {
   cloudflare: "https://cloudflare-dns.com/dns-query",
   google: "https://dns.google/resolve",
   quad9: "https://dns.quad9.net:5053/dns-query"
-}, ks = 63, xs = 253;
-function As(c) {
+}, xs = 63, As = 253;
+function Rs(c) {
   const e = "0123456789abcdefghijklmnopqrstuvwxyz";
   let t = "";
   for (let s = 0; s < c.length; s++)
     t += e[c[s] % 36], t += e[Math.floor(c[s] / 36) % 36];
   return t;
 }
-function Rs(c) {
+function Es(c) {
   const e = "0123456789abcdefghijklmnopqrstuvwxyz", t = [];
   for (let s = 0; s < c.length; s += 2) {
     const n = e.indexOf(c[s]), i = e.indexOf(c[s + 1] || "0");
@@ -4620,10 +4677,10 @@ function Rs(c) {
   }
   return new Uint8Array(t);
 }
-function Es(c, e) {
+function Us(c, e) {
   const t = [];
   let s = 0;
-  const n = ks, i = e.length + 2, r = xs - i;
+  const n = xs, i = e.length + 2, r = As - i;
   let o = 0;
   for (; s < c.length && o < r; ) {
     const a = Math.min(n, c.length - s, r - o - 1);
@@ -4631,7 +4688,7 @@ function Es(c, e) {
   }
   return t.join(".") + "." + e;
 }
-function Us(c, e) {
+function Os(c, e) {
   const t = new TextEncoder(), s = crypto.getRandomValues(new Uint8Array(2)), n = new Uint8Array([1, 0]), i = new Uint8Array([0, 1, 0, 0, 0, 0, 0, 0]), r = c.split("."), o = [];
   for (const u of r) {
     const _ = t.encode(u);
@@ -4648,12 +4705,12 @@ function Us(c, e) {
     d.set(u, f), f += u.length;
   return d.set(a, f), f += a.length, d.set(h, f), d;
 }
-function Os(c) {
+function Ds(c) {
   let e = "";
   for (let t = 0; t < c.length; t++) e += String.fromCharCode(c[t]);
   return btoa(e).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
-class zs {
+class Xs {
   constructor(e = {}) {
     this.resolver = e.resolver || "cloudflare", this.baseDomain = e.baseDomain, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this.pollInterval = e.pollInterval || 250, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._resolverUrl = typeof this.resolver == "string" && Pe[this.resolver] ? Pe[this.resolver] : this.resolver || Pe.cloudflare, this._closed = !1, this._pollTimer = null, this._seqSend = 0, this._seqRecv = 0, this._useJSON = this._resolverUrl.includes("dns.google");
   }
@@ -4665,7 +4722,7 @@ class zs {
     });
   }
   _connectServer() {
-    return this._relay = new M({
+    return this._relay = new L({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -4688,7 +4745,7 @@ class zs {
       return;
     }
     if (!this.connected || this._closed) return;
-    const t = e instanceof ArrayBuffer ? new Uint8Array(e) : new Uint8Array(e), s = As(t), i = `s${this._seqSend++}.${this.localPeerId}.${this.roomCode}`, r = Es(i + "." + s, this.baseDomain);
+    const t = e instanceof ArrayBuffer ? new Uint8Array(e) : new Uint8Array(e), s = Rs(t), i = `s${this._seqSend++}.${this.localPeerId}.${this.roomCode}`, r = Us(i + "." + s, this.baseDomain);
     this._useJSON ? await this._queryJSON(r, "TXT") : await this._queryWire(r, 16);
   }
   async _queryJSON(e, t) {
@@ -4702,7 +4759,7 @@ class zs {
   }
   async _queryWire(e, t) {
     try {
-      const s = Us(e, t), n = Os(s), i = await fetch(`${this._resolverUrl}?dns=${n}`, {
+      const s = Os(e, t), n = Ds(s), i = await fetch(`${this._resolverUrl}?dns=${n}`, {
         headers: { Accept: "application/dns-message" }
       });
       return new Uint8Array(await i.arrayBuffer());
@@ -4719,7 +4776,7 @@ class zs {
         if (t = await this._queryJSON(e, "TXT"), t && t.Answer) {
           for (const s of t.Answer)
             if (s.data) {
-              const n = s.data.replace(/"/g, ""), i = Rs(n);
+              const n = s.data.replace(/"/g, ""), i = Es(n);
               this._seqRecv++, this.onData && this.onData(i.buffer);
             }
         }
@@ -4736,7 +4793,7 @@ class zs {
     };
   }
 }
-class Xs {
+class Qs {
   constructor(e = {}) {
     this.workerUrl = e.workerUrl, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._ws = null, this._closed = !1;
   }
@@ -4761,7 +4818,7 @@ class Xs {
     });
   }
   _connectServer() {
-    return this._relay = new M({
+    return this._relay = new L({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -4801,7 +4858,7 @@ class Xs {
     };
   }
 }
-class Qs {
+class Ys {
   constructor(e = {}) {
     this.serverUrl = e.serverUrl, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this.pollMode = e.pollMode || !1, this.pollInterval = e.pollInterval || 100, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._eventSource = null, this._closed = !1, this._pollTimer = null, this._lastEventId = "0";
   }
@@ -4811,7 +4868,7 @@ class Qs {
     return this._closed = !1, this.pollMode ? this._connectPolling() : this._connectSSE();
   }
   _connectServer() {
-    return this._relay = new M({
+    return this._relay = new L({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -4904,7 +4961,7 @@ class Qs {
     };
   }
 }
-const Te = 3, Ds = 6, qs = 7, ke = 8, xe = 9, Ae = 18, pt = 19, Ms = 22, Re = 6, ae = 20, ce = 21, Ls = 25, Fs = 12, G = 554869826;
+const Te = 3, qs = 6, Ms = 7, ke = 8, xe = 9, Ae = 18, pt = 19, Ls = 22, Re = 6, ae = 20, ce = 21, Fs = 25, Bs = 12, G = 554869826;
 function he() {
   return crypto.getRandomValues(new Uint8Array(12));
 }
@@ -4941,7 +4998,7 @@ function de(c) {
   }
   return { type: t, txId: n, attributes: i };
 }
-class Ys {
+class Zs {
   constructor(e = {}) {
     this.turnUrl = e.turnUrl, this.username = e.username || "", this.credential = e.credential || "", this.peerIp = e.peerIp || "0.0.0.0", this.peerPort = e.peerPort || 49152, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._ws = null, this._closed = !1, this._channelNumber = 16384, this._channelBound = !1, this._realm = "", this._nonce = "", this._relayedAddr = null;
   }
@@ -4971,7 +5028,7 @@ class Ys {
           }
         }
         const o = de(r);
-        if (o && o.type === (qs | 256))
+        if (o && o.type === (Ms | 256))
           for (const a of o.attributes)
             a.type === pt && this.onData && this.onData(a.value.buffer);
       }, this._ws.onclose = () => {
@@ -4982,7 +5039,7 @@ class Ys {
     });
   }
   _connectServer() {
-    return this._relay = new M({
+    return this._relay = new L({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -5001,7 +5058,7 @@ class Ys {
   }
   async _allocate() {
     const e = he(), t = new Uint8Array([17, 0, 0, 0]), s = new TextEncoder().encode(this.username), n = [
-      { type: Ls, value: t },
+      { type: Fs, value: t },
       { type: Re, value: s }
     ];
     this._realm && this._nonce && (n.push({ type: ae, value: new TextEncoder().encode(this._realm) }), n.push({ type: ce, value: new TextEncoder().encode(this._nonce) }));
@@ -5011,7 +5068,7 @@ class Ys {
         const h = new Uint8Array(a.data), l = de(h);
         if (l) {
           for (const d of l.attributes)
-            d.type === ae && (this._realm = new TextDecoder().decode(d.value)), d.type === ce && (this._nonce = new TextDecoder().decode(d.value)), d.type === Ms && (this._relayedAddr = d.value);
+            d.type === ae && (this._realm = new TextDecoder().decode(d.value)), d.type === ce && (this._nonce = new TextDecoder().decode(d.value)), d.type === Ls && (this._relayedAddr = d.value);
           l.type === (Te | 256) ? (this._ws.removeEventListener("message", o), r()) : l.type === (Te | 272) && this._realm && this._nonce && (this._ws.removeEventListener("message", o), this._allocate().then(r));
         }
       };
@@ -5037,7 +5094,7 @@ class Ys {
     const e = he(), t = new Uint8Array(4);
     t[0] = this._channelNumber >> 8 & 255, t[1] = this._channelNumber & 255;
     const s = Ee(this.peerIp, this.peerPort), n = le(xe, e, [
-      { type: Fs, value: t },
+      { type: Bs, value: t },
       { type: Ae, value: s },
       { type: Re, value: new TextEncoder().encode(this.username) },
       { type: ae, value: new TextEncoder().encode(this._realm) },
@@ -5062,7 +5119,7 @@ class Ys {
       const s = new Uint8Array(4 + t.length);
       s[0] = this._channelNumber >> 8 & 255, s[1] = this._channelNumber & 255, s[2] = t.length >> 8 & 255, s[3] = t.length & 255, s.set(t, 4), this._ws.send(s);
     } else {
-      const s = he(), n = Ee(this.peerIp, this.peerPort), i = le(Ds, s, [
+      const s = he(), n = Ee(this.peerIp, this.peerPort), i = le(qs, s, [
         { type: Ae, value: n },
         { type: pt, value: t }
       ]);
@@ -5095,7 +5152,7 @@ const mt = [
   "/api/v2/notifications/poll",
   "/api/v1/preferences/update"
 ];
-function Bs(c) {
+function Ns(c) {
   const e = c instanceof ArrayBuffer ? new Uint8Array(c) : new Uint8Array(c);
   let t = "";
   for (let n = 0; n < e.length; n++) t += String.fromCharCode(e[n]);
@@ -5107,7 +5164,7 @@ function Bs(c) {
     version: "2.1.0"
   });
 }
-function Ns(c) {
+function Ws(c) {
   try {
     const e = typeof c == "string" ? JSON.parse(c) : c;
     if (e.events && e.events[0] && e.events[0].data) {
@@ -5124,7 +5181,7 @@ function Ns(c) {
   }
   return null;
 }
-class Zs {
+class en {
   constructor(e = {}) {
     this.serverUrl = e.serverUrl, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this.pollInterval = e.pollInterval || 150, this.jitter = e.jitter || 50, this.rotateEndpoints = e.rotateEndpoints !== !1, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._closed = !1, this._pollTimer = null, this._seq = 0, this._lastSeq = "0", this._endpointIdx = 0;
   }
@@ -5144,7 +5201,7 @@ class Zs {
     });
   }
   _connectServer() {
-    return this._relay = new M({
+    return this._relay = new L({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -5176,7 +5233,7 @@ class Zs {
           if (!s.ok) return;
           const n = await s.json(), i = n.messages || n.events || (Array.isArray(n) ? n : []);
           for (const r of i) {
-            const o = Ns(r);
+            const o = Ws(r);
             o && (r.seq && (this._lastSeq = r.seq.toString()), r.id && (this._lastSeq = r.id.toString()), this.onData && this.onData(o));
           }
         } catch {
@@ -5192,7 +5249,7 @@ class Zs {
       return;
     }
     if (!this.connected || this._closed) return;
-    const t = Bs(e), s = new URL(this.serverUrl);
+    const t = Ns(e), s = new URL(this.serverUrl);
     s.pathname = this._getEndpoint(), s.searchParams.set("r", this.roomCode), s.searchParams.set("p", this.localPeerId), s.searchParams.set("t", this.remotePeerId), s.searchParams.set("_", Date.now().toString(36));
     try {
       await fetch(s.toString(), {
@@ -5218,11 +5275,11 @@ class Zs {
   }
 }
 const X = 2, Ke = 3, Ut = X * Ke, gt = 16;
-function Ws(c, e, t) {
+function Hs(c, e, t) {
   const s = (1 << e) - 1;
   return t & ~s | c & s;
 }
-function Hs(c, e) {
+function $s(c, e) {
   return c & (1 << e) - 1;
 }
 function Ot(c, e, t) {
@@ -5235,7 +5292,7 @@ function Ot(c, e, t) {
       const h = n % Ke, l = Math.floor(n / Ut) * 4 + t * 4;
       if (l + h >= c.data.length) break;
       const d = Math.min(X, a + 1), f = o >> a - d + 1 & (1 << d) - 1;
-      c.data[l + h] = Ws(f, d, c.data[l + h]), n++;
+      c.data[l + h] = Hs(f, d, c.data[l + h]), n++;
     }
   }
   return n;
@@ -5246,7 +5303,7 @@ function Dt(c, e, t) {
   for (; i < e; ) {
     const a = n % Ke, h = Math.floor(n / Ut) * 4 + t * 4;
     if (h + a >= c.data.length) break;
-    const l = Hs(c.data[h + a], X);
+    const l = $s(c.data[h + a], X);
     if (r = r << X | l, o += X, o >= 8) {
       const d = o - 8;
       s[i] = r >> d & 255, r &= (1 << d) - 1, o = d, i++;
@@ -5255,15 +5312,15 @@ function Dt(c, e, t) {
   }
   return s;
 }
-function $s(c, e) {
+function js(c, e) {
   const t = new Uint8Array(4);
   new DataView(t.buffer).setUint32(0, e, !0), Ot(c, t, 0);
 }
-function js(c) {
+function Ks(c) {
   const e = Dt(c, 4, 0);
   return new DataView(e.buffer).getUint32(0, !0);
 }
-class en {
+class tn {
   constructor(e = {}) {
     this.serverUrl = e.serverUrl, this.roomCode = e.roomCode, this.localPeerId = e.localPeerId, this.remotePeerId = e.remotePeerId, this.imageWidth = e.imageWidth || 256, this.imageHeight = e.imageHeight || 256, this.pollInterval = e.pollInterval || 300, this._serverConfig = e.server || null, this._relay = null, this.connected = !1, this.onData = e.onData || null, this.onOpen = e.onOpen || null, this.onClose = e.onClose || null, this._closed = !1, this._pollTimer = null, this._seq = 0, this._lastSeq = "0", this._canvas = null, this._ctx = null;
   }
@@ -5278,7 +5335,7 @@ class en {
     });
   }
   _connectServer() {
-    return this._relay = new M({
+    return this._relay = new L({
       server: this._serverConfig,
       roomCode: this.roomCode,
       localPeerId: this.localPeerId,
@@ -5310,7 +5367,7 @@ class en {
       this._ctx.fillRect(a, h, l, d);
     }
     const s = this._ctx.getImageData(0, 0, this.imageWidth, this.imageHeight);
-    $s(s, t.length), Ot(s, t, gt), this._ctx.putImageData(s, 0, 0);
+    js(s, t.length), Ot(s, t, gt), this._ctx.putImageData(s, 0, 0);
     let n;
     this._canvas.convertToBlob ? n = await this._canvas.convertToBlob({ type: "image/png" }) : n = await new Promise((o) => this._canvas.toBlob(o, "image/png"));
     const i = new FormData();
@@ -5340,7 +5397,7 @@ class en {
           if (n.includes("image/png")) {
             const i = await s.blob(), r = await createImageBitmap(i);
             this._ensureCanvas(), (this._canvas.width !== r.width || this._canvas.height !== r.height) && (this._canvas.width = r.width, this._canvas.height = r.height, this._ctx = this._canvas.getContext("2d")), this._ctx.drawImage(r, 0, 0);
-            const o = this._ctx.getImageData(0, 0, r.width, r.height), a = js(o);
+            const o = this._ctx.getImageData(0, 0, r.width, r.height), a = Ks(o);
             if (a > 0 && a < o.data.length) {
               const l = Dt(o, a, gt);
               this.onData && this.onData(l.buffer);
@@ -5375,51 +5432,52 @@ class en {
   }
 }
 export {
-  ns as BondingEngine,
-  Xs as CDNTransport,
+  is as BondingEngine,
+  Qs as CDNTransport,
   Tt as ConnectionMonitor,
   kt as DEFAULT_CHUNK_SIZE,
-  Xt as DHTSignal,
+  Qt as DHTSignal,
   Ft as DataChannelPool,
   tt as DirectSignal,
-  zs as DoHTransport,
-  y as DriveSignal,
+  Xs as DoHTransport,
+  w as DriveSignal,
   st as E2ECrypto,
   z as Flags,
   _e as HEADER_SIZE,
-  Zs as HTTPCamoTransport,
-  ts as ICMPTransport,
-  D as ICMP_STRATEGY,
-  Js as MQTTBridge,
-  Qt as MQTTPool,
-  Vt as MQTTSignal,
+  en as HTTPCamoTransport,
+  ss as ICMPTransport,
+  q as ICMP_STRATEGY,
+  Bt as IceRacer,
+  zs as MQTTBridge,
+  Yt as MQTTPool,
+  Gt as MQTTSignal,
   vt as MQTTTransport,
-  Is as MediaManager,
-  ls as Messenger,
-  ps as ProxyClient,
+  vs as MediaManager,
+  ds as Messenger,
+  ms as ProxyClient,
   S as ProxyFrameType,
   xt as ProxyRelay,
-  Ss as ProxyServer,
-  Ts as QDP,
-  Vs as RelayChain,
-  ss as SRTPTransport,
-  Qs as SSETransport,
-  M as ServerRelay,
+  Is as ProxyServer,
+  ks as QDP,
+  Gs as RelayChain,
+  ns as SRTPTransport,
+  Ys as SSETransport,
+  L as ServerRelay,
   yt as SignalManager,
-  Jt as SignalRacer,
-  Gs as SpeedRTC,
-  en as StegTransport,
+  zt as SignalRacer,
+  Js as SpeedRTC,
+  tn as StegTransport,
   ut as Stream,
-  vs as StreamManager,
-  Ys as TURNTransport,
-  zt as WebTransportTransport,
-  is as decodeChunk,
-  os as decodeMetaPayload,
-  as as decodeProbeTimestamp,
+  Ps as StreamManager,
+  Zs as TURNTransport,
+  Xt as WebTransportTransport,
+  rs as decodeChunk,
+  as as decodeMetaPayload,
+  cs as decodeProbeTimestamp,
   pe as decodeProxyFrame,
   je as encodeChunk,
-  rs as encodeMetaChunk,
+  os as encodeMetaChunk,
   at as encodeProbe,
-  ds as encodeRequest,
+  fs as encodeRequest,
   ot as splitIntoChunks
 };
